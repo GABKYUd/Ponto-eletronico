@@ -27,7 +27,6 @@ services:
   - type: web
     name: ponto-frontend
     env: static
-    region: ohio
     buildCommand: npm install && npm run build
     staticPublishPath: ./dist
     envVars:
