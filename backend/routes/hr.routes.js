@@ -1,0 +1,323 @@
+const express = require('express');
+const { stringify } = require('csv-stringify/sync');
+const { authenticateUser, authenticateHR } = require('../auth');
+const userService = require('../users');
+const { run, all, get } = require('../database');
+
+// Helper: Sanitize User Inputs against XSS
+const createDOMPurify = require('dompurify');
+const { JSDOM } = require('jsdom');
+const window = new JSDOM('').window;
+const DOMPurify = createDOMPurify(window);
+const sanitize = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    return DOMPurify.sanitize(text);
+};
+
+const router = express.Router();
+
+// Helper: Analyze Records
+const analyzeRecords = (records, users = []) => {
+    const report = {};
+    const employees = [...new Set(records.map(r => r.user_id))];
+
+    employees.forEach(empId => {
+        const empName = users.find(u => u.id === empId)?.name || 'Unknown';
+        const empRecords = records
+            .filter(r => r.user_id === empId)
+            .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        const anomalies = [];
+        const shiftLogs = [];
+        let i = 0;
+
+        while (i < empRecords.length) {
+            const current = empRecords[i];
+            const next = empRecords[i + 1];
+
+            if (current.type === 'IN' || current.type === 'BREAK_END') {
+                if (current.type === 'BREAK_END') {
+                    const prev = i > 0 ? empRecords[i - 1] : null;
+                    if (!prev || prev.type !== 'BREAK_START') {
+                        anomalies.push({ type: 'Missing BREAK_START', detail: 'Ended Break without Starting', time: current.timestamp });
+                    }
+                }
+
+                if (next && (next.type === 'OUT' || next.type === 'BREAK_START')) {
+                    const start = new Date(current.timestamp);
+                    const end = new Date(next.timestamp);
+                    const durationHrs = (end - start) / (1000 * 60 * 60);
+
+                    shiftLogs.push({ start: current.timestamp, end: next.timestamp, duration: durationHrs.toFixed(2), status: 'Valid', type: 'SHIFT' });
+
+                    if (durationHrs < 0.016) anomalies.push({ type: 'Suspicious Duration', detail: 'Shift less than 1 minute', time: current.timestamp });
+                    else if (durationHrs > 14) anomalies.push({ type: 'Suspicious Duration', detail: 'Shift greater than 14 hours', time: current.timestamp });
+
+                    if (next.type === 'OUT') i += 2;
+                    else i += 1;
+                } else {
+                    anomalies.push({ type: 'Missing OUT', detail: 'Clocked IN/BREAK_END without Clocking OUT/BREAK_START', time: current.timestamp });
+                    shiftLogs.push({ start: current.timestamp, end: null, status: 'Incomplete', type: 'SHIFT' });
+                    i += 1;
+                }
+            } else if (current.type === 'BREAK_START') {
+                if (next && next.type === 'BREAK_END') {
+                    const start = new Date(current.timestamp);
+                    const end = new Date(next.timestamp);
+                    const durationMins = (end - start) / (1000 * 60);
+
+                    shiftLogs.push({ start: current.timestamp, end: next.timestamp, duration: (durationMins / 60).toFixed(2), status: 'Valid', type: 'BREAK' });
+                    i += 1;
+                } else {
+                    anomalies.push({ type: 'Missing BREAK_END', detail: 'Started Break without Ending', time: current.timestamp });
+                    shiftLogs.push({ start: current.timestamp, end: null, status: 'Incomplete', type: 'BREAK' });
+                    i += 1;
+                }
+            } else if (current.type === 'OUT') {
+                const prev = i > 0 ? empRecords[i - 1] : null;
+                if (!prev || (prev.type !== 'IN' && prev.type !== 'BREAK_END')) {
+                    anomalies.push({ type: 'Missing IN', detail: 'Clocked OUT without Clocking IN or Ending Break', time: current.timestamp });
+                }
+                shiftLogs.push({ start: null, end: current.timestamp, status: 'Incomplete', type: 'SHIFT' });
+                i += 1;
+            } else {
+                i += 1;
+            }
+        }
+
+        report[empId] = {
+            name: empName,
+            shift_expectation: users.find(u => u.id === empId)?.shift_expectation || 8,
+            totalShifts: shiftLogs.filter(s => s.type === 'SHIFT' && s.end && s.start).length,
+            anomalies,
+            logs: shiftLogs
+        };
+    });
+
+    return report;
+};
+
+// API: Get Reliability Report (Protected)
+router.get('/reports', authenticateHR, async (req, res) => {
+    try {
+        const records = await all("SELECT * FROM punches");
+        const users = await userService.getAllUsers();
+        const analysis = analyzeRecords(records, users);
+        res.json(analysis);
+    } catch (err) {
+        console.error('Error reading DB:', err);
+        res.status(500).json({ error: 'Failed to generate report.' });
+    }
+});
+
+// API: Export for PowerBI (Protected)
+router.get('/export/powerbi', authenticateHR, async (req, res) => {
+    try {
+        const records = await all("SELECT * FROM punches ORDER BY user_id, timestamp");
+        const users = await userService.getAllUsers();
+        const analysis = analyzeRecords(records, users);
+        const flatData = [];
+
+        Object.keys(analysis).forEach(empId => {
+            const empName = users.find(u => u.id === empId)?.name || 'Unknown';
+            const logs = analysis[empId].logs;
+
+            logs.forEach(log => {
+                flatData.push({
+                    EmployeeID: empId,
+                    EmployeeName: empName,
+                    Date: log.start ? log.start.split('T')[0] : (log.end ? log.end.split('T')[0] : 'N/A'),
+                    ClockIn: log.start || 'MISSING',
+                    ClockOut: log.end || 'MISSING',
+                    DurationHours: log.duration || 0,
+                    Status: log.status || 'Valid',
+                    Type: log.type || 'SHIFT'
+                });
+            });
+        });
+
+        const csvData = stringify(flatData, { header: true });
+        res.header('Content-Type', 'text/csv');
+        res.attachment('powerbi_export.csv');
+        res.send(csvData);
+
+    } catch (err) {
+        console.error('Error exporting:', err);
+        res.status(500).send('Export failed');
+    }
+});
+
+// API: Get All Users (for Chat/Social Sidebar)
+router.get('/users', authenticateUser, async (req, res) => {
+    try {
+        const users = await all("SELECT id, name, role FROM users");
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch users.' });
+    }
+});
+
+// Create Mail (HR Only)
+router.post('/mails', authenticateHR, async (req, res) => {
+    const { recipientId, subject, content, type, bonusAmount, meetingTime } = req.body;
+
+    if (!subject || !content) return res.status(400).json({ error: 'Subject and Content are required.' });
+    if (!['MAIL', 'MEETING', 'REWARD'].includes(type)) return res.status(400).json({ error: 'Invalid mail type.' });
+
+    try {
+        const timestamp = new Date().toISOString();
+        const cleanContent = sanitize(content);
+        const cleanSubject = sanitize(subject);
+
+        await run(
+            "INSERT INTO mails (sender_id, recipient_id, subject, content, type, bonus_amount, meeting_time, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            [req.user.id, recipientId || null, cleanSubject, cleanContent, type, bonusAmount || 0, meetingTime || null, timestamp]
+        );
+        res.json({ success: true, message: 'Mail sent successfully.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to send mail.' });
+    }
+});
+
+// Get User's Mails
+router.get('/mails/:userId', authenticateUser, async (req, res) => {
+    if (req.params.userId !== req.user.id && req.user.role !== 'HR') {
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        const mails = await all(`
+            SELECT m.*, u.name as sender_name 
+            FROM mails m
+            LEFT JOIN users u ON m.sender_id = u.id
+            WHERE m.recipient_id = ? OR m.recipient_id IS NULL
+            ORDER BY m.timestamp DESC
+        `, [req.params.userId]);
+        res.json(mails);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed fetching mails.' });
+    }
+});
+
+// Mark Mail as Read
+router.put('/mails/:id/read', authenticateUser, async (req, res) => {
+    try {
+        const mail = await get("SELECT recipient_id FROM mails WHERE id = ?", [req.params.id]);
+        if (!mail) return res.status(404).json({ error: 'Mail not found' });
+
+        if (mail.recipient_id && mail.recipient_id !== req.user.id && req.user.role !== 'HR') {
+            return res.status(403).json({ error: 'Forbidden. You do not own this mail.' });
+        }
+
+        await run("UPDATE mails SET is_read = 1 WHERE id = ?", [req.params.id]);
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Update failed.' });
+    }
+});
+
+// Get User Detail (Profile)
+router.get('/users/:id', authenticateUser, async (req, res) => {
+    try {
+        const user = await get(
+            "SELECT id, name, role, email, bio, pfp, shift_expectation FROM users WHERE id = ?",
+            [req.params.id]
+        );
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        const certifications = await all("SELECT * FROM certifications WHERE user_id = ?", [req.params.id]);
+        res.json({ ...user, certifications });
+    } catch (err) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+// Update User Shift (HR Only)
+router.put('/users/:id/shift', authenticateHR, async (req, res) => {
+    const { shift_expectation } = req.body;
+    try {
+        await run("UPDATE users SET shift_expectation = ? WHERE id = ?", [shift_expectation, req.params.id]);
+        res.json({ success: true, message: 'Shift updated successfully.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update shift bounds.' });
+    }
+});
+
+// API: Weekly HR Report
+router.get('/reports/weekly', authenticateHR, async (req, res) => {
+    try {
+        const users = await all("SELECT id, name, shift_expectation FROM users");
+
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const since = sevenDaysAgo.toISOString();
+
+        const punches = await all("SELECT * FROM punches WHERE timestamp >= ? ORDER BY timestamp ASC", [since]);
+
+        const report = users.map(user => {
+            const userPunches = punches.filter(p => p.user_id === user.id);
+
+            // Group by date
+            const days = {};
+            userPunches.forEach(p => {
+                const date = p.timestamp.split('T')[0];
+                if (!days[date]) days[date] = [];
+                days[date].push(p);
+            });
+
+            let totalWorkedMs = 0;
+            let daysUnderExpected = 0;
+            let missedBreaks = 0;
+
+            Object.keys(days).forEach(date => {
+                const dayPunches = days[date];
+                let inTime = null, outTime = null;
+                let breakStart = null, breakEnd = null;
+
+                dayPunches.forEach(p => {
+                    if (p.type === 'IN') inTime = new Date(p.timestamp);
+                    if (p.type === 'OUT') outTime = new Date(p.timestamp);
+                    if (p.type === 'BREAK_START') breakStart = new Date(p.timestamp);
+                    if (p.type === 'BREAK_END') breakEnd = new Date(p.timestamp);
+                });
+
+                let breakMs = 0;
+                if (breakStart && breakEnd) {
+                    breakMs = breakEnd - breakStart;
+                } else if (inTime && outTime) {
+                    // Missed break condition: they clocked in and out but no complete break
+                    missedBreaks++;
+                }
+
+                if (inTime && outTime) {
+                    let workedMs = (outTime - inTime) - breakMs;
+                    if (workedMs < 0) workedMs = 0;
+                    totalWorkedMs += workedMs;
+
+                    const hoursWorked = workedMs / (1000 * 60 * 60);
+                    const expected = user.shift_expectation || 8;
+                    // Tolerance of 10%
+                    if (hoursWorked < expected * 0.9) {
+                        daysUnderExpected++;
+                    }
+                }
+            });
+
+            return {
+                id: user.id,
+                name: user.name,
+                shift_expectation: user.shift_expectation || 8,
+                total_hours_worked: (totalWorkedMs / (1000 * 60 * 60)).toFixed(1),
+                days_under_expected: daysUnderExpected,
+                missed_breaks: missedBreaks
+            };
+        });
+
+        res.json(report);
+    } catch (err) {
+        console.error('Failed to generate weekly report', err);
+        res.status(500).json({ error: 'Failed to generate weekly report' });
+    }
+});
+
+module.exports = router;
