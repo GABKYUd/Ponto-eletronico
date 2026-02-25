@@ -22,7 +22,12 @@ const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 const sanitize = (text) => {
-    if (!text || typeof text !== 'string') return text;
+    if (!text) return '';
+    if (typeof text !== 'string') {
+        // Prevent array injection / type juggling bypasses
+        text = String(text);
+        // If they passed a complex object, String(obj) is '[object Object]' which is safe
+    }
     return DOMPurify.sanitize(text);
 };
 

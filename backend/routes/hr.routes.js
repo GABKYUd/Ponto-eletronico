@@ -10,7 +10,10 @@ const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 const sanitize = (text) => {
-    if (!text || typeof text !== 'string') return text;
+    if (!text) return '';
+    if (typeof text !== 'string') {
+        text = String(text);
+    }
     return DOMPurify.sanitize(text);
 };
 
@@ -209,6 +212,12 @@ router.put('/mails/:id/read', authenticateUser, async (req, res) => {
             return res.status(403).json({ error: 'Forbidden. You do not own this mail.' });
         }
 
+        if (!mail.recipient_id) {
+            // It's a company-wide mail. We don't mark it read globally.
+            // Just return success so the frontend dismisses it for the current session.
+            return res.json({ success: true, message: 'Dismissed locally' });
+        }
+
         await run("UPDATE mails SET is_read = 1 WHERE id = ?", [req.params.id]);
         res.json({ success: true });
     } catch (err) {
@@ -224,6 +233,12 @@ router.get('/users/:id', authenticateUser, async (req, res) => {
             [req.params.id]
         );
         if (!user) return res.status(404).json({ error: 'User not found.' });
+
+        // Information Disclosure / IDOR fix: Hide private fields from standard employees
+        if (req.user.id !== req.params.id && req.user.role !== 'HR') {
+            delete user.email;
+            delete user.shift_expectation;
+        }
 
         const certifications = await all("SELECT * FROM certifications WHERE user_id = ?", [req.params.id]);
         res.json({ ...user, certifications });

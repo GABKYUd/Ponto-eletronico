@@ -47,9 +47,18 @@ if (process.env.CLOUDINARY_URL) {
 }
 
 // Multer Storage Configuration (File Upload)
+const mimeToExt = {
+    'image/jpeg': '.jpg',
+    'image/png': '.png',
+    'image/webp': '.webp'
+};
+
 const localStorage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+    filename: (req, file, cb) => {
+        const safeExt = mimeToExt[file.mimetype] || '.bin'; // Hard fallback
+        cb(null, Date.now() + safeExt);
+    }
 });
 
 const cloudStorage = new CloudinaryStorage({
@@ -90,14 +99,12 @@ app.post('/api/upload', authenticateUser, (req, res) => {
 const authRoutes = require('./routes/auth.routes');
 const clockRoutes = require('./routes/clock.routes');
 const hrRoutes = require('./routes/hr.routes');
-const rpgRoutes = require('./routes/rpg.routes');
 const socialRoutes = require('./routes/social.routes');
 
 // Apply Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/clock', clockRoutes);
 app.use('/api', hrRoutes); // Contains /users, /mails, /reports
-app.use('/api', rpgRoutes); // Contains /characters, /campaigns
 app.use('/api', socialRoutes); // Contains /chat, /posts, /profile, /certifications
 
 // API: Get Message of the Day (MOTD)

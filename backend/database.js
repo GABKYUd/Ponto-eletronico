@@ -155,38 +155,6 @@ function initializeSchema() {
             is_read INTEGER DEFAULT 0,
             timestamp TEXT NOT NULL,
             FOREIGN KEY(sender_id) REFERENCES users(id)
-        )`,
-        `CREATE TABLE IF NOT EXISTS campaigns (
-            id ${idType},
-            name TEXT NOT NULL,
-            description TEXT,
-            dm_id TEXT NOT NULL,
-            created_at TEXT NOT NULL,
-            FOREIGN KEY(dm_id) REFERENCES users(id)
-        )`,
-        `CREATE TABLE IF NOT EXISTS campaign_members (
-            campaign_id INTEGER,
-            user_id TEXT,
-            FOREIGN KEY(campaign_id) REFERENCES campaigns(id),
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            PRIMARY KEY(campaign_id, user_id)
-        )`,
-        `CREATE TABLE IF NOT EXISTS characters (
-            id ${idType},
-            user_id TEXT NOT NULL,
-            campaign_id INTEGER,
-            name TEXT NOT NULL,
-            race TEXT,
-            class TEXT,
-            level INTEGER DEFAULT 1,
-            stats TEXT,
-            hp INTEGER,
-            max_hp INTEGER,
-            ac INTEGER,
-            inventory TEXT,
-            sheet_data TEXT,
-            FOREIGN KEY(user_id) REFERENCES users(id),
-            FOREIGN KEY(campaign_id) REFERENCES campaigns(id)
         )`
     ];
 
@@ -203,7 +171,6 @@ function initializeSchema() {
                 db.run("ALTER TABLE users ADD COLUMN shift_expectation INTEGER DEFAULT 8", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN recipient_id TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'", () => { });
-                db.run("ALTER TABLE characters ADD COLUMN sheet_data TEXT", () => { });
             } else {
                 // Postgres migrations syntax is slightly different but usually failing silently on duplicate column is harder, 
                 // so ideally in a real prod env you'd use a migrations folder. 
@@ -213,8 +180,7 @@ function initializeSchema() {
                     "ALTER TABLE users ADD COLUMN pfp TEXT",
                     "ALTER TABLE users ADD COLUMN shift_expectation INTEGER DEFAULT 8",
                     "ALTER TABLE messages ADD COLUMN recipient_id TEXT",
-                    "ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'",
-                    "ALTER TABLE characters ADD COLUMN sheet_data TEXT"
+                    "ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'"
                 ];
                 for (let m of pgMigrations) {
                     try { await run(m); } catch (e) { /* Ignore duplicate column errors */ }

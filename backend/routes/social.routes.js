@@ -8,8 +8,24 @@ const { JSDOM } = require('jsdom');
 const window = new JSDOM('').window;
 const DOMPurify = createDOMPurify(window);
 const sanitize = (text) => {
-    if (!text || typeof text !== 'string') return text;
+    if (!text) return '';
+    if (typeof text !== 'string') {
+        text = String(text);
+    }
     return DOMPurify.sanitize(text);
+};
+
+// URL validation helper to prevent XSS payloads in images
+const isValidImageUrl = (url) => {
+    if (!url || typeof url !== 'string') return false;
+    // Allow blank or null if not required
+    if (url.trim() === '') return true;
+
+    // Must start with safe schemes or /uploads
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:image/') || url.startsWith('/uploads/')) {
+        return true;
+    }
+    return false;
 };
 
 const router = express.Router();
@@ -56,12 +72,16 @@ router.get('/chat', authenticateUser, async (req, res) => {
 });
 
 router.post('/chat', authenticateUser, async (req, res) => {
-    const { userName, content, recipientId, type = 'text' } = req.body;
+    const { content, recipientId, type = 'text' } = req.body;
     const userId = req.user.id;
 
     if (!content) return res.status(400).json({ error: 'Missing content.' });
 
     try {
+        const user = await get("SELECT name FROM users WHERE id = ?", [userId]);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+        const userName = user.name; // Authentic name from DB
+
         const timestamp = new Date().toISOString();
         const cleanContent = sanitize(content);
 
@@ -100,9 +120,18 @@ router.get('/posts', authenticateUser, async (req, res) => {
 });
 
 router.post('/posts', authenticateUser, async (req, res) => {
-    const { userName, content, imageUrl } = req.body;
+    const { content, imageUrl } = req.body;
     const userId = req.user.id;
+
+    if (imageUrl && !isValidImageUrl(imageUrl)) {
+        return res.status(400).json({ error: 'Invalid Image URL provided.' });
+    }
+
     try {
+        const user = await get("SELECT name FROM users WHERE id = ?", [userId]);
+        if (!user) return res.status(404).json({ error: 'User not found.' });
+        const userName = user.name;
+
         const timestamp = new Date().toISOString();
         await run(
             "INSERT INTO posts (user_id, user_name, content, image_url, timestamp) VALUES (?, ?, ?, ?, ?)",
@@ -135,6 +164,11 @@ router.put('/profile/:id', authenticateUser, async (req, res) => {
     }
 
     const { bio, pfp } = req.body;
+
+    if (pfp && !isValidImageUrl(pfp)) {
+        return res.status(400).json({ error: 'Invalid Profile Picture URL provided.' });
+    }
+
     try {
         await run("UPDATE users SET bio = ?, pfp = ? WHERE id = ?", [sanitize(bio), pfp, req.params.id]);
         res.json({ success: true });
@@ -151,10 +185,15 @@ router.get('/certifications/:userId', authenticateUser, async (req, res) => {
 router.post('/certifications', authenticateUser, async (req, res) => {
     const { name, issuer, date, imageUrl } = req.body;
     const userId = req.user.id;
+
+    if (imageUrl && !isValidImageUrl(imageUrl)) {
+        return res.status(400).json({ error: 'Invalid Image URL provided.' });
+    }
+
     try {
         await run(
             "INSERT INTO certifications (user_id, name, issuer, date, image_url) VALUES (?, ?, ?, ?, ?)",
-            [userId, sanitize(name), sanitize(issuer), date, imageUrl]
+            [userId, sanitize(name), sanitize(issuer), sanitize(date), imageUrl]
         );
         res.json({ success: true });
     } catch (err) { res.status(500).json({ error: 'Error adding cert' }); }

@@ -52,12 +52,12 @@ async function runTests() {
 
         // 3. Clock In
         console.log('3. Clocking IN...');
-        await request(`${API_URL}/clock`, 'POST', { employeeId: TEST_USER.id, type: 'IN' });
+        await request(`${API_URL}/clock`, 'POST', { employeeId: TEST_USER.id, type: 'IN' }, hrToken);
         console.log('   [SUCCESS] Clocked IN.');
 
         // 4. Start Break
         console.log('4. Starting Break...');
-        await request(`${API_URL}/clock`, 'POST', { employeeId: TEST_USER.id, type: 'BREAK_START' });
+        await request(`${API_URL}/clock`, 'POST', { employeeId: TEST_USER.id, type: 'BREAK_START' }, hrToken);
         console.log('   [SUCCESS] Break Started.');
 
         // 5. Send Chat Message
@@ -66,31 +66,15 @@ async function runTests() {
             userId: TEST_USER.id,
             userName: TEST_USER.name,
             content: 'Automated Test Message'
-        });
+        }, empLogin.token);
         console.log('   [SUCCESS] Message Sent.');
 
         // 6. Verify Chat
         console.log('6. Verifying Chat...');
-        const messages = await request(`${API_URL}/chat`, 'GET');
+        const messages = await request(`${API_URL}/chat`, 'GET', null, empLogin.token);
         const msg = messages.find(m => m.user_id === TEST_USER.id && m.content === 'Automated Test Message');
         if (!msg) throw new Error('Message not found in chat history');
         console.log('   [SUCCESS] Message verified.');
-
-        // 7. Create Campaign
-        console.log('7. Creating Campaign...');
-        await request(`${API_URL}/campaigns`, 'POST', {
-            name: 'Test Campaign',
-            description: 'A test adventure',
-            dmId: TEST_USER.id
-        });
-        console.log('   [SUCCESS] Campaign created.');
-
-        // 8. Verify Campaign
-        console.log('8. Verifying Campaign...');
-        const campaigns = await request(`${API_URL}/campaigns`, 'GET');
-        const camp = campaigns.find(c => c.dm_id === TEST_USER.id && c.name === 'Test Campaign');
-        if (!camp) throw new Error('Campaign not found');
-        console.log('   [SUCCESS] Campaign verified.');
 
         console.log('\n--- VERIFICATION COMPLETE: ALL TESTS PASSED ---');
 
