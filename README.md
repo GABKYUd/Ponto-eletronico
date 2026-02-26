@@ -1,4 +1,4 @@
-# Ponto-Eletronico (Electronic Time Clock App)
+# Ponto-Eletronico (Electronic Time Clock App + RAG)
 
 An enterprise-grade electronic time tracking and HR management application designed to streamline employee shift logging, internal communications, and HR reporting.
 
