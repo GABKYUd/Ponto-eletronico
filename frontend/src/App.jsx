@@ -9,6 +9,8 @@ import Profile from './Profile';
 import Settings from './Settings';
 import Home from './Home';
 import Inbox from './Inbox';
+import ReceiptsOS from './ReceiptsOS';
+import InvoiceCalculator from './InvoiceCalculator';
 import './index.css';
 
 function PrivateRoute({ children }) {
@@ -34,6 +36,8 @@ function App() {
         <Route path="/register" element={<PrivateRoute><Register /></PrivateRoute>} />
         <Route path="/dashboard" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
         <Route path="/employee-hub" element={<EmployeeHub />} />
+        <Route path="/receipts" element={<PrivateRoute><ReceiptsOS /></PrivateRoute>} />
+        <Route path="/calculator" element={<PrivateRoute><InvoiceCalculator /></PrivateRoute>} />
         <Route path="/inbox" element={<PrivateRoute><Inbox /></PrivateRoute>} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/profile" element={<Profile />} />

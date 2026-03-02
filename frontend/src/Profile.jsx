@@ -38,11 +38,11 @@ function Profile() {
         // Fetch User Profile
         authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/profile/${profileId}`)
             .then(res => {
-                if (!res.ok) throw new Error('Failed to fetch profile');
+                if (!res.ok) throw new Error('Falha ao buscar perfil');
                 return res.json();
             })
             .then(data => {
-                if (!data || !data.name) throw new Error('Invalid profile data');
+                if (!data || !data.name) throw new Error('Dados de perfil inválidos');
                 setUser(data);
                 setEditForm({ bio: data.bio || '', pfp: data.pfp || '' });
             })
@@ -55,13 +55,13 @@ function Profile() {
         authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/certifications/${profileId}`)
             .then(res => res.json())
             .then(setCerts)
-            .catch(err => console.error('Failed to fetch certs', err));
+            .catch(err => console.error('Falha ao buscar certificados', err));
 
         // Fetch Social Graph (Posts)
         authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts`)
             .then(res => res.json())
             .then(setPosts)
-            .catch(err => console.error('Failed to fetch posts', err));
+            .catch(err => console.error('Falha ao buscar publicações', err));
 
         // Fetch Co-Workers
         authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users`)
@@ -70,7 +70,7 @@ function Profile() {
                 const others = data.filter(u => u.id !== loggedInUserId);
                 setCoworkers(others);
             })
-            .catch(err => console.error('Failed to fetch coworkers', err));
+            .catch(err => console.error('Falha ao buscar colegas', err));
 
     }, [profileId, loggedInUserId, navigate]);
 
@@ -79,7 +79,7 @@ function Profile() {
             await authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts/${postId}/like`, { method: 'POST' });
             setPosts(posts.map(p => p.id === postId ? { ...p, likes: p.likes + 1 } : p));
         } catch (err) {
-            console.error('Failed to like post', err);
+            console.error('Falha ao curtir publicação', err);
         }
     };
 
@@ -137,8 +137,8 @@ function Profile() {
         authFetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/posts`).then(res => res.json()).then(setPosts);
     };
 
-    if (error) return <div className="app-container"><h2 style={{ color: 'red' }}>Error: {error}</h2><button className="btn" onClick={() => navigate('/login')}>Go to Login</button></div>;
-    if (!user) return <div className="app-container">Loading...</div>;
+    if (error) return <div className="app-container"><h2 style={{ color: 'red' }}>Erro: {error}</h2><button className="btn" onClick={() => navigate('/login')}>Ir para Login</button></div>;
+    if (!user) return <div className="app-container">Carregando...</div>;
 
     return (
         <div className="app-container" style={{ alignItems: 'flex-start', overflowY: 'auto', height: '100vh', display: 'block', paddingBottom: '3rem', background: 'linear-gradient(135deg, #121212 0%, #1e1e2f 100%)' }}>
@@ -188,32 +188,32 @@ function Profile() {
                         {loggedInUserId === profileId && (
                             isEditing ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                                    <input className="input-field" placeholder="Avatar URL" value={editForm.pfp} onChange={e => setEditForm({ ...editForm, pfp: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)' }} />
-                                    <textarea className="input-field" placeholder="About you..." value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} style={{ height: '80px', resize: 'none', background: 'rgba(0,0,0,0.3)' }} />
+                                    <input className="input-field" placeholder="URL do Avatar" value={editForm.pfp} onChange={e => setEditForm({ ...editForm, pfp: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)' }} />
+                                    <textarea className="input-field" placeholder="Sobre você..." value={editForm.bio} onChange={e => setEditForm({ ...editForm, bio: e.target.value })} style={{ height: '80px', resize: 'none', background: 'rgba(0,0,0,0.3)' }} />
                                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button className="btn" onClick={handleUpdateProfile} style={{ flex: 1, background: 'linear-gradient(135deg, #bb86fc, #9965f4)', color: '#fff' }}>Save</button>
-                                        <button className="btn" onClick={() => setIsEditing(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.1)' }}>Cancel</button>
+                                        <button className="btn" onClick={handleUpdateProfile} style={{ flex: 1, background: 'linear-gradient(135deg, #bb86fc, #9965f4)', color: '#fff' }}>Salvar</button>
+                                        <button className="btn" onClick={() => setIsEditing(false)} style={{ flex: 1, background: 'rgba(255,255,255,0.1)' }}>Cancelar</button>
                                     </div>
                                 </div>
                             ) : (
                                 <>
                                     <p style={{ fontSize: '0.95rem', color: '#ccc', lineHeight: '1.6', margin: '0 0 1.5rem 0', fontStyle: 'italic' }}>
-                                        "{user.bio || 'Living the dream.'}"
+                                        "{user.bio || 'Vivendo o sonho.'}"
                                     </p>
                                     <button className="btn" style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', transition: 'all 0.3s' }} onClick={() => setIsEditing(true)}>
-                                        Edit Profile
+                                        Editar Perfil
                                     </button>
                                 </>
                             )
                         )}
                         {loggedInUserId !== profileId && (
                             <p style={{ fontSize: '0.95rem', color: '#ccc', lineHeight: '1.6', margin: '0 0 1.5rem 0', fontStyle: 'italic' }}>
-                                "{user.bio || 'Living the dream.'}"
+                                "{user.bio || 'Vivendo o sonho.'}"
                             </p>
                         )}
 
                         <button className="btn" style={{ width: '100%', marginTop: '1rem', background: '#bb86fc', color: '#000', fontWeight: 'bold' }} onClick={() => navigate('/employee-hub')}>
-                            ⬅ Back to Hub
+                            ⬅ Voltar ao Hub
                         </button>
                     </div>
 
@@ -225,7 +225,7 @@ function Profile() {
                     }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 1.5rem 0' }}>
                             <h3 style={{ margin: 0, color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                🏆 Certificates
+                                🏆 Certificados
                             </h3>
                             {loggedInUserId === profileId && (
                                 <button onClick={() => document.getElementById('add-cert-form').style.display = 'block'} style={{ background: 'none', border: 'none', color: '#03dac6', fontSize: '1.5rem', cursor: 'pointer', outline: 'none' }}>+</button>
@@ -244,18 +244,18 @@ function Profile() {
                                     </div>
                                 </div>
                             ))}
-                            {certs.length === 0 && <div style={{ color: '#888', fontSize: '0.9rem', textAlign: 'center', fontStyle: 'italic' }}>No achievements yet.</div>}
+                            {certs.length === 0 && <div style={{ color: '#888', fontSize: '0.9rem', textAlign: 'center', fontStyle: 'italic' }}>Nenhuma conquista ainda.</div>}
                         </div>
 
                         {/* Hidden Add Cert Form */}
                         <div id="add-cert-form" style={{ display: 'none', marginTop: '1.5rem' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                                <input className="input-field" placeholder="Course Name" value={newCert.name} onChange={e => setNewCert({ ...newCert, name: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px' }} />
-                                <input className="input-field" placeholder="Institution" value={newCert.issuer} onChange={e => setNewCert({ ...newCert, issuer: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px' }} />
+                                <input className="input-field" placeholder="Nome do Curso" value={newCert.name} onChange={e => setNewCert({ ...newCert, name: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px' }} />
+                                <input className="input-field" placeholder="Instituição" value={newCert.issuer} onChange={e => setNewCert({ ...newCert, issuer: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px' }} />
                                 <input className="input-field" type="date" value={newCert.date} onChange={e => setNewCert({ ...newCert, date: e.target.value })} style={{ background: 'rgba(0,0,0,0.3)', padding: '10px' }} />
                                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                    <button className="btn" onClick={handleAddCert} style={{ flex: 1, background: '#03dac6', color: '#000' }}>Add</button>
-                                    <button className="btn" onClick={() => document.getElementById('add-cert-form').style.display = 'none'} style={{ flex: 1, background: 'rgba(255,255,255,0.1)' }}>Close</button>
+                                    <button className="btn" onClick={handleAddCert} style={{ flex: 1, background: '#03dac6', color: '#000' }}>Adicionar</button>
+                                    <button className="btn" onClick={() => document.getElementById('add-cert-form').style.display = 'none'} style={{ flex: 1, background: 'rgba(255,255,255,0.1)' }}>Fechar</button>
                                 </div>
                             </div>
                         </div>
@@ -268,7 +268,7 @@ function Profile() {
                         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
                     }}>
                         <h3 style={{ margin: '0 0 1.5rem 0', color: '#fff', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            👥 Co-Workers
+                            👥 Colegas de Trabalho
                         </h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             {coworkers.slice(0, 5).map(cw => (
@@ -291,7 +291,7 @@ function Profile() {
                                         style={{ padding: '6px 12px', background: 'transparent', border: '1px solid rgba(3,218,198,0.5)', color: '#03dac6', fontSize: '0.8rem', borderRadius: '12px' }}
                                         onClick={() => navigate('/chat')}
                                     >
-                                        Message
+                                        Mensagem
                                     </button>
                                 </div>
                             ))}
@@ -313,8 +313,8 @@ function Profile() {
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                 <div style={{ fontSize: '1.5rem' }}>🏠</div>
                                 <div>
-                                    <div style={{ color: '#03dac6', fontWeight: 'bold' }}>Back to My Profile</div>
-                                    <div style={{ color: '#aaa', fontSize: '0.8rem' }}>You are currently viewing {user.name}'s page.</div>
+                                    <div style={{ color: '#03dac6', fontWeight: 'bold' }}>Voltar ao Meu Perfil</div>
+                                    <div style={{ color: '#aaa', fontSize: '0.8rem' }}>Você está visualizando a página de {user.name}.</div>
                                 </div>
                             </div>
                             <div style={{ color: '#03dac6', fontSize: '1.2rem', fontWeight: 'bold' }}>➔</div>
@@ -339,7 +339,7 @@ function Profile() {
                                     {!user.pfp && user.name.charAt(0)}
                                 </div>
                                 <textarea
-                                    placeholder={`Got an update for the team, ${user.name.split(' ')[0]}?`}
+                                    placeholder={`Tem alguma novidade para a equipe, ${user.name.split(' ')[0]}?`}
                                     value={newPostContent}
                                     onChange={e => setNewPostContent(e.target.value)}
                                     style={{
@@ -356,7 +356,7 @@ function Profile() {
                                     color: newPostContent.trim() ? '#000' : '#666',
                                     padding: '10px 24px', borderRadius: '20px', fontWeight: 'bold', transition: 'all 0.3s'
                                 }}>
-                                    Broadcast
+                                    Publicar
                                 </button>
                             </div>
                         </div>
@@ -364,7 +364,7 @@ function Profile() {
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', color: '#888', margin: '0.5rem 0' }}>
                         <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to right, rgba(187,134,252,0.5), transparent)' }}></div>
-                        <span style={{ fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase' }}>Company Feed</span>
+                        <span style={{ fontSize: '0.85rem', letterSpacing: '2px', textTransform: 'uppercase' }}>Feed da Empresa</span>
                         <div style={{ flex: 1, height: '1px', background: 'linear-gradient(to left, rgba(3,218,198,0.5), transparent)' }}></div>
                     </div>
 
@@ -399,7 +399,7 @@ function Profile() {
                                             {(() => {
                                                 const diff = new Date() - new Date(post.timestamp);
                                                 const hours = Math.floor(diff / (1000 * 60 * 60));
-                                                return hours > 24 ? Math.floor(hours / 24) + 'd ago' : (hours > 0 ? hours + 'h ago' : 'Just now');
+                                                return hours > 24 ? Math.floor(hours / 24) + 'd atrás' : (hours > 0 ? hours + 'h atrás' : 'Agora mesmo');
                                             })()}
                                         </div>
                                     </div>
@@ -430,7 +430,7 @@ function Profile() {
                                             borderRadius: '8px', transition: 'background 0.2s'
                                         }} className="interaction-btn"
                                     >
-                                        <span style={{ fontSize: '1.3rem' }}>💬</span> Reply
+                                        <span style={{ fontSize: '1.3rem' }}>💬</span> Responder
                                     </button>
                                 </div>
                             </div>

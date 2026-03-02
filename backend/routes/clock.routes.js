@@ -11,12 +11,12 @@ router.post('/', authenticateUser, async (req, res) => {
     const employeeId = req.user.id;
 
     if (!['IN', 'OUT', 'BREAK_START', 'BREAK_END'].includes(type)) {
-        return res.status(400).json({ error: 'Invalid data. type (IN/OUT/BREAK_START/BREAK_END) required.' });
+        return res.status(400).json({ error: 'Dados inválidos. tipo (IN/OUT/BREAK_START/BREAK_END) é obrigatório.' });
     }
 
     const user = await userService.findUserById(employeeId);
     if (!user) {
-        return res.status(404).json({ error: 'Employee ID not found. Please register first.' });
+        return res.status(404).json({ error: 'ID de Funcionário não encontrado. Por favor, registre-se primeiro.' });
     }
 
     const timestamp = new Date().toISOString();
@@ -24,10 +24,10 @@ router.post('/', authenticateUser, async (req, res) => {
     try {
         await run("INSERT INTO punches (user_id, timestamp, type) VALUES (?, ?, ?)", [employeeId, timestamp, type]);
         console.log(`Recorded: ${employeeId} - ${type} at ${timestamp}`);
-        res.json({ success: true, message: `Clock ${type} successful for ${user.name}.`, timestamp });
+        res.json({ success: true, message: `Marcação de ${type} registrada com sucesso para ${user.name}.`, timestamp });
     } catch (err) {
         console.error('Error writing to DB:', err);
-        res.status(500).json({ error: 'Internal server error.' });
+        res.status(500).json({ error: 'Erro interno do servidor.' });
     }
 });
 
@@ -36,7 +36,7 @@ router.get('/today/:employeeId', authenticateUser, async (req, res) => {
     const { employeeId } = req.params;
 
     if (employeeId !== req.user.id && req.user.role !== 'HR') {
-        return res.status(403).json({ error: 'Forbidden. Cannot view other user punches.' });
+        return res.status(403).json({ error: 'Acesso negado. Não é possível ver marcações de outros usuários.' });
     }
 
     const today = new Date().toISOString().split('T')[0];
@@ -47,7 +47,7 @@ router.get('/today/:employeeId', authenticateUser, async (req, res) => {
         );
         res.json(punches);
     } catch (err) {
-        res.status(500).json({ error: 'Error fetching punches' });
+        res.status(500).json({ error: 'Erro ao buscar marcações' });
     }
 });
 

@@ -14,7 +14,7 @@ function Settings() {
 
     const handleChangePassword = async () => {
         if (passForm.newPassword !== passForm.confirmPassword) {
-            setMessage({ type: 'error', text: 'New passwords do not match' });
+            setMessage({ type: 'error', text: 'As novas senhas não coincidem' });
             return;
         }
 
@@ -34,13 +34,13 @@ function Settings() {
             const data = await res.json();
 
             if (res.ok) {
-                setMessage({ type: 'success', text: 'Password updated successfully!' });
+                setMessage({ type: 'success', text: 'Senha atualizada com sucesso!' });
                 setPassForm({ oldPassword: '', newPassword: '', confirmPassword: '' });
             } else {
-                setMessage({ type: 'error', text: data.error || 'Failed to update password' });
+                setMessage({ type: 'error', text: data.error || 'Falha ao atualizar senha' });
             }
         } catch (err) {
-            setMessage({ type: 'error', text: 'Network error occurred' });
+            setMessage({ type: 'error', text: 'Ocorreu um erro de rede' });
         }
     };
 
@@ -68,14 +68,14 @@ function Settings() {
     return (
         <div className="app-container">
             <div className="card" style={{ maxWidth: '600px' }}>
-                <h1 className="title">⚙️ Account Settings</h1>
+                <h1 className="title">⚙️ Configurações da Conta</h1>
 
                 {/* Change Password Section */}
                 <div style={{ marginBottom: '2rem', textAlign: 'left' }}>
-                    <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>🔐 Security</h3>
+                    <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>🔐 Segurança</h3>
 
                     <div className="input-group">
-                        <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>Current Password</label>
+                        <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>Senha Atual</label>
                         <input
                             type="password"
                             className="input-field"
@@ -85,7 +85,7 @@ function Settings() {
                     </div>
 
                     <div className="input-group">
-                        <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>New Password</label>
+                        <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>Nova Senha</label>
                         <input
                             type="password"
                             className="input-field"
@@ -95,7 +95,7 @@ function Settings() {
                     </div>
 
                     <div className="input-group">
-                        <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>Confirm New Password</label>
+                        <label style={{ display: 'block', marginBottom: '5px', color: '#aaa' }}>Confirmar Nova Senha</label>
                         <input
                             type="password"
                             className="input-field"
@@ -111,15 +111,15 @@ function Settings() {
                     )}
 
                     <button className="btn" onClick={handleChangePassword} style={{ width: '100%', marginTop: '1rem' }}>
-                        Update Password
+                        Atualizar Senha
                     </button>
                 </div>
 
                 {/* 2FA Section */}
                 <div style={{ textAlign: 'left' }}>
-                    <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>📲 Two-Factor Authentication</h3>
+                    <h3 style={{ borderBottom: '1px solid #333', paddingBottom: '0.5rem' }}>📲 Autenticação de Dois Fatores</h3>
                     <p style={{ color: '#888', fontSize: '0.9rem' }}>
-                        Scan this QR code with Google Authenticator or Authy to log in securely.
+                        Escaneie este código QR com o Google Authenticator ou Authy para fazer login com segurança.
                     </p>
 
                     <button
@@ -127,7 +127,7 @@ function Settings() {
                         onClick={handleShow2FA}
                         style={{ background: showQr ? '#333' : '#bb86fc', width: '100%' }}
                     >
-                        {showQr ? 'Hide QR Code' : 'Show 2FA QR Code'}
+                        {showQr ? 'Ocultar Código QR' : 'Mostrar Código QR 2FA'}
                     </button>
 
                     {showQr && qrCode && (
@@ -135,14 +135,14 @@ function Settings() {
                             <div style={{ background: '#fff', padding: '10px', borderRadius: '12px', display: 'inline-block' }}>
                                 <img src={qrCode} alt="2FA QR Code" style={{ maxWidth: '200px', display: 'block' }} />
                             </div>
-                            <p style={{ color: 'var(--text-primary)', margin: '1rem 0 0', fontWeight: '600' }}>Scan to register</p>
+                            <p style={{ color: 'var(--text-primary)', margin: '1rem 0 0', fontWeight: '600' }}>Escaneie para registrar</p>
                         </div>
                     )}
                 </div>
 
                 <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem', textAlign: 'left' }}>
                     <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#252525', fontSize: '0.9rem', padding: '10px 20px', border: '1px solid #333', width: '100%' }}>
-                        ⬅ Back to Hub
+                        ⬅ Voltar ao Hub
                     </button>
                 </div>
 

@@ -155,6 +155,17 @@ function initializeSchema() {
             is_read INTEGER DEFAULT 0,
             timestamp TEXT NOT NULL,
             FOREIGN KEY(sender_id) REFERENCES users(id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS receipts (
+            id ${idType},
+            user_id TEXT NOT NULL,
+            receipt_number TEXT NOT NULL,
+            customer_name TEXT NOT NULL,
+            total_amount REAL NOT NULL,
+            date TEXT NOT NULL,
+            data TEXT NOT NULL,
+            timestamp TEXT NOT NULL,
+            FOREIGN KEY(user_id) REFERENCES users(id)
         )`
     ];
 

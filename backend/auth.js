@@ -11,7 +11,7 @@ const authenticateHR = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(token, JWT_SECRET);
-        if (decoded.role !== 'HR') {
+        if (!['HR', 'HRAssistant'].includes(decoded.role)) {
             return res.status(403).json({ error: 'Access denied. HR role required.' });
         }
         req.user = decoded;

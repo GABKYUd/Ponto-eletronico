@@ -25,13 +25,13 @@ function Dashboard() {
 
     // HR-themed Welcome Messages
     const hrMessages = [
-        "Ready to optimize workforce efficiency? 📈",
-        "Coffee secured. Spreadsheets loaded. Let's do this. ☕",
-        "Remember: You are the gatekeeper of time. ⏳",
-        "Making sure every second counts (literally). ⏱️",
-        "The payroll gods are watching. ✨",
-        "Unleash the power of organized data! 📊",
-        "Warning: High levels of productivity detected. 🚀"
+        "Pronto para otimizar a eficiência da equipe? 📈",
+        "Café garantido. Planilhas carregadas. Vamos lá. ☕",
+        "Lembre-se: Você é o guardião do tempo. ⏳",
+        "Garantindo que cada segundo conte (literalmente). ⏱️",
+        "Os deuses da folha de pagamento estão observando. ✨",
+        "Libere o poder dos dados organizados! 📊",
+        "Aviso: Altos níveis de produtividade detectados. 🚀"
     ];
 
     useEffect(() => {
@@ -123,20 +123,20 @@ function Dashboard() {
             });
             const data = await res.json();
             if (res.ok) {
-                setMailStatus({ type: 'success', text: 'Sent successfully!' });
+                setMailStatus({ type: 'success', text: 'Enviado com sucesso!' });
                 setMailSubject('');
                 setMailContent('');
                 setBonusAmount('');
                 setMeetingTime('');
             } else {
-                setMailStatus({ type: 'error', text: data.error || 'Failed to send' });
+                setMailStatus({ type: 'error', text: data.error || 'Falha ao enviar' });
             }
         } catch (err) {
-            setMailStatus({ type: 'error', text: 'Connection error' });
+            setMailStatus({ type: 'error', text: 'Erro de conexão' });
         }
     };
 
-    if (loading) return <div className="app-container"><div className="card">Loading...</div></div>;
+    if (loading) return <div className="app-container"><div className="card">Carregando...</div></div>;
 
     return (
         <div className="dashboard-container" style={{ padding: '2rem', maxWidth: '1800px', width: '100%', boxSizing: 'border-box', margin: '0 auto', height: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -145,22 +145,23 @@ function Dashboard() {
             <div className="card" style={{ marginBottom: '1.5rem', background: 'linear-gradient(to right, #1e1e1e, #252525)', maxWidth: '100%', textAlign: 'left' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
                     <div>
-                        <h1 className="title" style={{ margin: 0, fontSize: '2rem' }}>HR Command Center</h1>
+                        <h1 className="title" style={{ margin: 0, fontSize: '2rem' }}>Centro de Comando RH</h1>
                         <p style={{ margin: '0.5rem 0 0', color: '#03dac6', fontStyle: 'italic', fontSize: '0.95rem' }}>"{welcomeMsg}"</p>
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.8rem' }}>
-                        <button onClick={loadWeeklyReport} className="btn" style={{ background: '#01bca7', color: '#000', fontSize: '0.9rem' }}>📅 Weekly Report</button>
-                        <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#bb86fc', color: '#000', fontSize: '0.9rem' }}>👨‍💻 Employee Hub</button>
-                        <button onClick={() => navigate('/register')} className="btn" style={{ background: '#0070f3', fontSize: '0.9rem' }}>+ New Hire</button>
-                        <button onClick={() => navigate('/')} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>Logout</button>
+                        <button onClick={() => navigate('/receipts')} className="btn" style={{ background: '#e0e0e0', color: '#000', fontSize: '0.9rem' }}>🧾 Recibos</button>
+                        <button onClick={loadWeeklyReport} className="btn" style={{ background: '#01bca7', color: '#000', fontSize: '0.9rem' }}>📅 Relatório Semanal</button>
+                        <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#bb86fc', color: '#000', fontSize: '0.9rem' }}>👨‍💻 Painel do Funcionário</button>
+                        <button onClick={() => navigate('/register')} className="btn" style={{ background: '#0070f3', fontSize: '0.9rem' }}>+ Nova Contratação</button>
+                        <button onClick={() => navigate('/')} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>Sair</button>
                     </div>
                 </div>
 
                 <div style={{ marginTop: '1.5rem' }}>
                     <input
                         type="text"
-                        placeholder="🔍 Search Employee (Name or ID)..."
+                        placeholder="🔍 Buscar Funcionário (Nome ou ID)..."
                         className="input-field"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
@@ -175,7 +176,7 @@ function Dashboard() {
                 {/* Sidebar List */}
                 <div className="card" style={{ padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#1a1a1a', maxWidth: '100%', textAlign: 'left' }}>
                     <div style={{ padding: '1rem', borderBottom: '1px solid #333', background: '#222' }}>
-                        <h3 style={{ margin: 0, fontSize: '1rem' }}>Staff Directory <span style={{ color: '#888' }}>({filteredEmployees.length})</span></h3>
+                        <h3 style={{ margin: 0, fontSize: '1rem' }}>Diretório da Equipe <span style={{ color: '#888' }}>({filteredEmployees.length})</span></h3>
                     </div>
                     <div style={{ flex: 1, overflowY: 'auto', padding: '0.5rem' }}>
                         {filteredEmployees.map(empId => {
@@ -200,7 +201,7 @@ function Dashboard() {
                                 </div>
                             );
                         })}
-                        {filteredEmployees.length === 0 && <p style={{ padding: '1rem', color: '#666', textAlign: 'center' }}>No matches found.</p>}
+                        {filteredEmployees.length === 0 && <p style={{ padding: '1rem', color: '#666', textAlign: 'center' }}>Nenhum resultado encontrado.</p>}
                     </div>
                 </div>
 
@@ -218,7 +219,7 @@ function Dashboard() {
                                 </div>
                                 <div style={{ textAlign: 'right', display: 'flex', gap: '2rem', alignItems: 'center' }}>
                                     <div>
-                                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Shift Expectation (Hrs)</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Expectativa de Turno (Hrs)</div>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'flex-end', marginTop: '4px' }}>
                                             <input
                                                 type="number"
@@ -231,7 +232,7 @@ function Dashboard() {
                                         </div>
                                     </div>
                                     <div>
-                                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Total Records</div>
+                                        <div style={{ fontSize: '0.9rem', color: '#aaa' }}>Total de Registros</div>
                                         <div style={{ fontSize: '1.5rem', fontWeight: 'bold' }}>{report[selectedEmp].logs.length}</div>
                                     </div>
                                 </div>
@@ -240,15 +241,15 @@ function Dashboard() {
                             {/* KPI Cards Row */}
                             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
                                 <div style={{ background: 'linear-gradient(135deg, rgba(3, 218, 198, 0.1), transparent)', border: '1px solid rgba(3,218,198,0.2)', padding: '1.5rem', borderRadius: '12px' }}>
-                                    <p style={{ margin: '0 0 0.5rem 0', color: '#03dac6', fontSize: '0.9rem' }}>Valid Shifts</p>
+                                    <p style={{ margin: '0 0 0.5rem 0', color: '#03dac6', fontSize: '0.9rem' }}>Turnos Válidos</p>
                                     <h3 style={{ margin: 0, fontSize: '2rem' }}>{report[selectedEmp].totalShifts}</h3>
                                 </div>
                                 <div style={{ background: 'linear-gradient(135deg, rgba(255, 68, 68, 0.1), transparent)', border: '1px solid rgba(255,68,68,0.2)', padding: '1.5rem', borderRadius: '12px' }}>
-                                    <p style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '0.9rem' }}>Anomalies Detected</p>
+                                    <p style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '0.9rem' }}>Anomalias Detectadas</p>
                                     <h3 style={{ margin: 0, fontSize: '2rem' }}>{report[selectedEmp].anomalies.length}</h3>
                                 </div>
                                 <div style={{ background: 'linear-gradient(135deg, rgba(187, 134, 252, 0.1), transparent)', border: '1px solid rgba(187,134,252,0.2)', padding: '1.5rem', borderRadius: '12px' }}>
-                                    <p style={{ margin: '0 0 0.5rem 0', color: '#bb86fc', fontSize: '0.9rem' }}>Avg Shift Duration</p>
+                                    <p style={{ margin: '0 0 0.5rem 0', color: '#bb86fc', fontSize: '0.9rem' }}>Duração Média do Turno</p>
                                     <h3 style={{ margin: 0, fontSize: '2rem' }}>
                                         {report[selectedEmp].totalShifts > 0
                                             ? (report[selectedEmp].logs.reduce((acc, l) => acc + (parseFloat(l.duration) || 0), 0) / report[selectedEmp].totalShifts).toFixed(1)
@@ -262,7 +263,7 @@ function Dashboard() {
 
                                 {/* Shift Durations Bar Chart */}
                                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #222', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', color: '#ddd' }}>Shift Durations (Hours)</h4>
+                                    <h4 style={{ margin: '0 0 1rem 0', color: '#ddd' }}>Durações dos Turnos (Horas)</h4>
                                     <div style={{ flex: 1 }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <BarChart data={report[selectedEmp].logs.filter(l => l.duration)}>
@@ -277,14 +278,14 @@ function Dashboard() {
 
                                 {/* Status Distribution Pie Chart */}
                                 <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #222', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column' }}>
-                                    <h4 style={{ margin: '0 0 1rem 0', color: '#ddd' }}>Status Distribution</h4>
+                                    <h4 style={{ margin: '0 0 1rem 0', color: '#ddd' }}>Distribuição de Status</h4>
                                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <Pie
                                                     data={[
-                                                        { name: 'Valid', value: report[selectedEmp].logs.filter(l => l.status === 'Valid').length },
-                                                        { name: 'Incomplete', value: report[selectedEmp].logs.filter(l => l.status !== 'Valid').length }
+                                                        { name: 'Válido', value: report[selectedEmp].logs.filter(l => l.status === 'Valid').length },
+                                                        { name: 'Incompleto', value: report[selectedEmp].logs.filter(l => l.status !== 'Valid').length }
                                                     ]}
                                                     cx="50%" cy="50%"
                                                     innerRadius={50} outerRadius={70}
@@ -298,8 +299,8 @@ function Dashboard() {
                                         </ResponsiveContainer>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', fontSize: '0.85rem' }}>
-                                        <span style={{ color: '#03dac6' }}>● Valid</span>
-                                        <span style={{ color: '#ff4444' }}>● Incomplete</span>
+                                        <span style={{ color: '#03dac6' }}>● Válido</span>
+                                        <span style={{ color: '#ff4444' }}>● Incompleto</span>
                                     </div>
                                 </div>
                             </div>
@@ -308,15 +309,15 @@ function Dashboard() {
                             {report[selectedEmp].anomalies.length > 0 && (
                                 <div style={{ marginTop: '1.5rem', background: 'rgba(255, 68, 68, 0.05)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 68, 68, 0.2)' }}>
                                     <h4 style={{ color: '#ff4444', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        <span style={{ fontSize: '1.2rem' }}>⚠️</span> Required Audits Menu
+                                        <span style={{ fontSize: '1.2rem' }}>⚠️</span> Menu de Auditorias Necessárias
                                     </h4>
                                     <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                                             <thead>
                                                 <tr style={{ borderBottom: '1px solid rgba(255,68,68,0.2)', textAlign: 'left' }}>
-                                                    <th style={{ padding: '0.5rem', color: '#ff8888' }}>Date</th>
-                                                    <th style={{ padding: '0.5rem', color: '#ff8888' }}>Type</th>
-                                                    <th style={{ padding: '0.5rem', color: '#ff8888' }}>Details</th>
+                                                    <th style={{ padding: '0.5rem', color: '#ff8888' }}>Data</th>
+                                                    <th style={{ padding: '0.5rem', color: '#ff8888' }}>Tipo</th>
+                                                    <th style={{ padding: '0.5rem', color: '#ff8888' }}>Detalhes</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -336,37 +337,37 @@ function Dashboard() {
                             {/* HR Mail & Rewards Module */}
                             <div style={{ marginTop: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #333' }}>
                                 <h4 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span>✉️</span> Send Communication & Rewards
+                                    <span>✉️</span> Enviar Comunicação & Recompensas
                                 </h4>
                                 <form onSubmit={handleSendMail} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Recipient</label>
+                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Destinatário</label>
                                             <div style={{ padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff' }}>
-                                                {selectedEmp ? `${report[selectedEmp].name} (ID: ${selectedEmp})` : 'All Employees (Company Wide)'}
+                                                {selectedEmp ? `${report[selectedEmp].name} (ID: ${selectedEmp})` : 'Todos os Funcionários (Geral)'}
                                             </div>
                                         </div>
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Type</label>
+                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Tipo</label>
                                             <select
                                                 value={mailType}
                                                 onChange={e => setMailType(e.target.value)}
                                                 style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff' }}
                                             >
-                                                <option value="MAIL">Standard Mail</option>
-                                                <option value="MEETING">Schedule Meeting</option>
-                                                <option value="REWARD">Send Reward/Bonus</option>
+                                                <option value="MAIL">Email Padrão</option>
+                                                <option value="MEETING">Agendar Reunião</option>
+                                                <option value="REWARD">Enviar Recompensa/Bônus</option>
                                             </select>
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Subject</label>
+                                        <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Assunto</label>
                                         <input
                                             type="text"
                                             value={mailSubject}
                                             onChange={e => setMailSubject(e.target.value)}
-                                            placeholder="Subject..."
+                                            placeholder="Assunto..."
                                             style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff' }}
                                             required
                                         />
@@ -374,12 +375,12 @@ function Dashboard() {
 
                                     {mailType === 'REWARD' && (
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#fca311', fontSize: '0.9rem', fontWeight: 'bold' }}>Bonus Amount ($)</label>
+                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#fca311', fontSize: '0.9rem', fontWeight: 'bold' }}>Valor do Bônus (R$)</label>
                                             <input
                                                 type="number"
                                                 value={bonusAmount}
                                                 onChange={e => setBonusAmount(e.target.value)}
-                                                placeholder="e.g. 500"
+                                                placeholder="ex. 500"
                                                 style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #fca311', borderRadius: '8px', color: '#fff' }}
                                                 required
                                             />
@@ -388,7 +389,7 @@ function Dashboard() {
 
                                     {mailType === 'MEETING' && (
                                         <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#bb86fc', fontSize: '0.9rem', fontWeight: 'bold' }}>Meeting Date & Time</label>
+                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#bb86fc', fontSize: '0.9rem', fontWeight: 'bold' }}>Data e Hora da Reunião</label>
                                             <input
                                                 type="datetime-local"
                                                 value={meetingTime}
@@ -400,11 +401,11 @@ function Dashboard() {
                                     )}
 
                                     <div>
-                                        <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Message Content</label>
+                                        <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Conteúdo da Mensagem</label>
                                         <textarea
                                             value={mailContent}
                                             onChange={e => setMailContent(e.target.value)}
-                                            placeholder="Write your message here..."
+                                            placeholder="Escreva sua mensagem aqui..."
                                             rows="4"
                                             style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff', resize: 'vertical' }}
                                             required
@@ -412,7 +413,7 @@ function Dashboard() {
                                     </div>
 
                                     <button type="submit" className="btn" style={{ background: mailType === 'REWARD' ? '#fca311' : (mailType === 'MEETING' ? '#bb86fc' : '#03dac6'), color: '#000', fontWeight: 'bold', padding: '1rem' }}>
-                                        {mailType === 'REWARD' ? 'Send Reward 💰' : (mailType === 'MEETING' ? 'Schedule Meeting 📅' : 'Send Mail ✉️')}
+                                        {mailType === 'REWARD' ? 'Enviar Recompensa 💰' : (mailType === 'MEETING' ? 'Agendar Reunião 📅' : 'Enviar Email ✉️')}
                                     </button>
 
                                     {mailStatus && (
@@ -429,8 +430,8 @@ function Dashboard() {
                             <div style={{ width: '150px', height: '150px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
                                 <span style={{ fontSize: '4rem', opacity: 0.5 }}>📊</span>
                             </div>
-                            <h2 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>No Employee Selected</h2>
-                            <p>Select a staff member from the directory to generate their analytics dashboard.</p>
+                            <h2 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>Nenhum Funcionário Selecionado</h2>
+                            <p>Selecione um membro da equipe no diretório para gerar seu painel de análise.</p>
                         </div>
                     )}
                 </div>
@@ -442,19 +443,19 @@ function Dashboard() {
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
                     <div className="card" style={{ background: '#1e1e1e', border: '1px solid #333', width: '90%', maxWidth: '900px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '1rem', marginBottom: '1rem' }}>
-                            <h2 style={{ margin: 0, color: '#03dac6' }}>Weekly Shift & Break Report</h2>
-                            <button onClick={() => setShowWeeklyReport(false)} className="btn" style={{ background: 'transparent', border: '1px solid #555' }}>Close</button>
+                            <h2 style={{ margin: 0, color: '#03dac6' }}>Relatório Semanal de Turnos e Pausas</h2>
+                            <button onClick={() => setShowWeeklyReport(false)} className="btn" style={{ background: 'transparent', border: '1px solid #555' }}>Fechar</button>
                         </div>
                         {weeklyReport ? (
                             <div style={{ overflowY: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
                                     <thead style={{ position: 'sticky', top: 0, background: '#1e1e1e' }}>
                                         <tr style={{ borderBottom: '2px solid #333' }}>
-                                            <th style={{ padding: '0.8rem' }}>Employee</th>
-                                            <th style={{ padding: '0.8rem' }}>Exp. Hours/Day</th>
-                                            <th style={{ padding: '0.8rem' }}>Total Hours (7d)</th>
-                                            <th style={{ padding: '0.8rem' }}>Days Under Expected</th>
-                                            <th style={{ padding: '0.8rem' }}>Missed Breaks</th>
+                                            <th style={{ padding: '0.8rem' }}>Funcionário</th>
+                                            <th style={{ padding: '0.8rem' }}>Horas Esp./Dia</th>
+                                            <th style={{ padding: '0.8rem' }}>Total Horas (7d)</th>
+                                            <th style={{ padding: '0.8rem' }}>Dias Abaixo do Esperado</th>
+                                            <th style={{ padding: '0.8rem' }}>Pausas Perdidas</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -471,7 +472,7 @@ function Dashboard() {
                                 </table>
                             </div>
                         ) : (
-                            <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Loading report data...</div>
+                            <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Carregando dados do relatório...</div>
                         )}
                     </div>
                 </div>

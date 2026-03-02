@@ -30,6 +30,12 @@ Through an iterative development and security prioritization process, the applic
    - **Stored XSS & Arbitrary Executions Blocked:** Implemented strict MIME-type whitelisting mapped to secure disk extensions (`.png`, `.webp`, `.jpg`), and patched internal DOMPurify type-juggling bypasses via robust string constraints.
    - **Rate Limiting:** Guarded authentication routes against brute-force attacks via `express-rate-limit`.
 
+## Latest Additions
+- **ReceiptsOS (Sales & Merchandising):** A robust PDF Receipt Builder with dynamic calculations (taxes, subtotals), time-tracking, and secure auto-saving functionality. History viewer is strictly restricted by HR hierarchy.
+- **Invoice Price Calculator (Sales):** A dedicated tool for the sales team to compute markups, taxes, and final selling prices.
+- **Advanced HR Hierarchy:** Introduced the `Assistente de RH` (HR Assistant) role with secure code validation, bridging the gap between employees and the HR Manager.
+- **Smart Auto-Breaks:** Non-intrusive WebSocket alerts that notify employees to take a break after 1 hour of continuous work, rather than forcefully manipulating database punching records.
+
 ## How to Run Locally
 
 ### Prerequisites

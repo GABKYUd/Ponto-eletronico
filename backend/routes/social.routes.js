@@ -36,7 +36,7 @@ router.get('/chat', authenticateUser, async (req, res) => {
     const { userId, otherId } = req.query;
 
     if (userId && userId !== req.user.id && req.user.role !== 'HR') {
-        return res.status(403).json({ error: 'Forbidden. Cannot read other user chats.' });
+        return res.status(403).json({ error: 'Acesso negado. Não é possível ler chats de outros usuários.' });
     }
 
     try {
@@ -67,7 +67,7 @@ router.get('/chat', authenticateUser, async (req, res) => {
         }
         res.json(messages);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch messages.' });
+        res.status(500).json({ error: 'Falha ao buscar mensagens.' });
     }
 });
 
@@ -75,11 +75,11 @@ router.post('/chat', authenticateUser, async (req, res) => {
     const { content, recipientId, type = 'text' } = req.body;
     const userId = req.user.id;
 
-    if (!content) return res.status(400).json({ error: 'Missing content.' });
+    if (!content) return res.status(400).json({ error: 'Conteúdo ausente.' });
 
     try {
         const user = await get("SELECT name FROM users WHERE id = ?", [userId]);
-        if (!user) return res.status(404).json({ error: 'User not found.' });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
         const userName = user.name; // Authentic name from DB
 
         const timestamp = new Date().toISOString();
@@ -106,7 +106,7 @@ router.post('/chat', authenticateUser, async (req, res) => {
 
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to send message.' });
+        res.status(500).json({ error: 'Falha ao enviar mensagem.' });
     }
 });
 
@@ -116,7 +116,7 @@ router.get('/posts', authenticateUser, async (req, res) => {
     try {
         const posts = await all("SELECT * FROM posts ORDER BY timestamp DESC LIMIT 50");
         res.json(posts);
-    } catch (err) { res.status(500).json({ error: 'Error fetching posts' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao buscar publicações' }); }
 });
 
 router.post('/posts', authenticateUser, async (req, res) => {
@@ -124,12 +124,12 @@ router.post('/posts', authenticateUser, async (req, res) => {
     const userId = req.user.id;
 
     if (imageUrl && !isValidImageUrl(imageUrl)) {
-        return res.status(400).json({ error: 'Invalid Image URL provided.' });
+        return res.status(400).json({ error: 'URL de imagem inválida fornecida.' });
     }
 
     try {
         const user = await get("SELECT name FROM users WHERE id = ?", [userId]);
-        if (!user) return res.status(404).json({ error: 'User not found.' });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
         const userName = user.name;
 
         const timestamp = new Date().toISOString();
@@ -138,14 +138,14 @@ router.post('/posts', authenticateUser, async (req, res) => {
             [userId, userName, sanitize(content), imageUrl, timestamp]
         );
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: 'Error creating post' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao criar publicação' }); }
 });
 
 router.post('/posts/:id/like', authenticateUser, async (req, res) => {
     try {
         await run("UPDATE posts SET likes = likes + 1 WHERE id = ?", [req.params.id]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: 'Error liking post' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao curtir publicação' }); }
 });
 
 // --- Profile & Certifications API ---
@@ -154,32 +154,32 @@ router.get('/profile/:id', authenticateUser, async (req, res) => {
     try {
         const user = await get("SELECT id, name, role, bio, pfp, email FROM users WHERE id = ?", [req.params.id]);
         if (user) res.json(user);
-        else res.status(404).json({ error: 'User not found' });
-    } catch (err) { res.status(500).json({ error: 'Error fetching profile' }); }
+        else res.status(404).json({ error: 'Usuário não encontrado' });
+    } catch (err) { res.status(500).json({ error: 'Erro ao buscar perfil' }); }
 });
 
 router.put('/profile/:id', authenticateUser, async (req, res) => {
     if (req.user.id !== req.params.id && req.user.role !== 'HR') {
-        return res.status(403).json({ error: 'Forbidden. You cannot edit another profile.' });
+        return res.status(403).json({ error: 'Acesso negado. Você não pode editar outro perfil.' });
     }
 
     const { bio, pfp } = req.body;
 
     if (pfp && !isValidImageUrl(pfp)) {
-        return res.status(400).json({ error: 'Invalid Profile Picture URL provided.' });
+        return res.status(400).json({ error: 'URL da Foto de Perfil inválida fornecida.' });
     }
 
     try {
         await run("UPDATE users SET bio = ?, pfp = ? WHERE id = ?", [sanitize(bio), pfp, req.params.id]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: 'Error updating profile' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao atualizar perfil' }); }
 });
 
 router.get('/certifications/:userId', authenticateUser, async (req, res) => {
     try {
         const certs = await all("SELECT * FROM certifications WHERE user_id = ?", [req.params.userId]);
         res.json(certs);
-    } catch (err) { res.status(500).json({ error: 'Error fetching certs' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao buscar certificados' }); }
 });
 
 router.post('/certifications', authenticateUser, async (req, res) => {
@@ -187,7 +187,7 @@ router.post('/certifications', authenticateUser, async (req, res) => {
     const userId = req.user.id;
 
     if (imageUrl && !isValidImageUrl(imageUrl)) {
-        return res.status(400).json({ error: 'Invalid Image URL provided.' });
+        return res.status(400).json({ error: 'URL de imagem inválida fornecida.' });
     }
 
     try {
@@ -196,20 +196,20 @@ router.post('/certifications', authenticateUser, async (req, res) => {
             [userId, sanitize(name), sanitize(issuer), sanitize(date), imageUrl]
         );
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: 'Error adding cert' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao adicionar certificado' }); }
 });
 
 router.delete('/certifications/:id', authenticateUser, async (req, res) => {
     try {
         const cert = await get("SELECT user_id FROM certifications WHERE id = ?", [req.params.id]);
-        if (!cert) return res.status(404).json({ error: 'Certification not found' });
+        if (!cert) return res.status(404).json({ error: 'Certificado não encontrado' });
         if (cert.user_id !== req.user.id && req.user.role !== 'HR') {
-            return res.status(403).json({ error: 'Forbidden. You do not own this certification.' });
+            return res.status(403).json({ error: 'Acesso negado. Este certificado não pertence a você.' });
         }
 
         await run("DELETE FROM certifications WHERE id = ?", [req.params.id]);
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ error: 'Error deleting cert' }); }
+    } catch (err) { res.status(500).json({ error: 'Erro ao deletar certificado' }); }
 });
 
 module.exports = router;

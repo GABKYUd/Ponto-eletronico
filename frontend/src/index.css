@@ -492,3 +492,38 @@ body {
   box-shadow: 0 0 15px rgba(187, 134, 252, 0.2);
   transform: translateY(-2px);
 }
+
+/* --- Receipt Print Styles --- */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .printable-receipt,
+  .printable-receipt * {
+    visibility: visible;
+  }
+
+  .printable-receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-builder-container {
+    background-color: white !important;
+  }
+
+  @page {
+    margin: 0;
+  }
+}

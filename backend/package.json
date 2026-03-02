@@ -2,7 +2,7 @@
   "dependencies": {
     "bcrypt": "^6.0.0",
     "body-parser": "^2.2.2",
-    "cloudinary": "^1.41.3",
+    "cloudinary": "^2.9.0",
     "cors": "^2.8.6",
     "csv-parse": "^6.1.0",
     "csv-stringify": "^6.6.0",
@@ -14,12 +14,12 @@
     "jsdom": "^28.1.0",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.0.2",
-    "multer-storage-cloudinary": "^4.0.0",
+    "multer-storage-cloudinary": "^2.2.1",
     "node-fetch": "^3.3.2",
     "pg": "^8.18.0",
     "qrcode": "^1.5.4",
     "socket.io": "^4.8.3",
     "speakeasy": "^2.0.0",
-    "sqlite3": "^5.1.7"
+    "sqlite3": "^5.0.2"
   }
 }

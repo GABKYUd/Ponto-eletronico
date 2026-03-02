@@ -12,7 +12,7 @@ function Login() {
         fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/motd`)
             .then(res => res.json())
             .then(data => setMotd(data.message))
-            .catch(() => setMotd('Welcome back! 🚀'));
+            .catch(() => setMotd('Bem-vindo(a) de volta! 🚀'));
     }, []);
 
     const handleLogin = async (e) => {
@@ -38,17 +38,20 @@ function Login() {
                     navigate('/employee-hub');
                 }
             } else {
-                setError(data.error || 'Login failed');
+                setError(data.error || 'Falha no login');
             }
         } catch (err) {
-            setError('Connection error');
+            setError('Erro de conexão');
         }
     };
 
     return (
         <div className="app-container">
             <div className="login-card">
-                <h1 className="title">Welcome to KYU INC (HR)</h1>
+                <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                    <img src="/Kyu_Shop.png" alt="Kyu INC Logo" style={{ width: '120px', borderRadius: '8px' }} />
+                </div>
+                <h1 className="title">Bem-vindo à KYU INC (RH)</h1>
 
                 {motd && (
                     <div style={{ marginBottom: '1.5rem', fontStyle: 'italic', color: '#bb86fc', fontSize: '0.9rem', padding: '0 1rem' }}>
@@ -63,20 +66,20 @@ function Login() {
                             className={`toggle-option ${!formData.code ? 'active' : ''}`}
                             onClick={() => setFormData({ ...formData, code: '', password: '' })}
                         >
-                            🔑 Password
+                            🔑 Senha
                         </div>
                         <div
                             className={`toggle-option ${formData.code ? 'active' : ''}`}
                             onClick={() => setFormData({ ...formData, password: undefined, code: '' })}
                         >
-                            🛡️ Authenticator
+                            🛡️ Autenticador
                         </div>
                     </div>
 
                     <div className="input-group">
                         <input
                             type="text"
-                            placeholder="HR ID"
+                            placeholder="ID do RH"
                             value={formData.id}
                             onChange={(e) => setFormData({ ...formData, id: e.target.value })}
                             className="input-field"
@@ -87,7 +90,7 @@ function Login() {
                         {formData.password !== undefined ? (
                             <input
                                 type="password"
-                                placeholder="Password"
+                                placeholder="Senha"
                                 value={formData.password}
                                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                 className="input-field"
@@ -106,14 +109,14 @@ function Login() {
                     </div>
 
                     <button type="submit" className="btn btn-in" style={{ width: '100%', marginTop: '1rem' }}>
-                        Login
+                        Entrar
                     </button>
 
                     {error && <div className="message error">⚠️ {error}</div>}
                 </form>
 
                 <div style={{ marginTop: '2rem', borderTop: '1px solid #333', paddingTop: '1.5rem' }}>
-                    <button onClick={() => navigate('/')} className="btn" style={{ background: '#252525', fontSize: '0.8rem', padding: '10px 20px', border: '1px solid #333' }}>Back to Clock</button>
+                    <button onClick={() => navigate('/')} className="btn" style={{ background: '#252525', fontSize: '0.8rem', padding: '10px 20px', border: '1px solid #333' }}>Voltar para o Ponto</button>
                 </div>
             </div>
         </div>

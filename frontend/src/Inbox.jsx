@@ -32,13 +32,13 @@ function Inbox() {
                     const data = await response.json();
                     setMails(data);
                 } else if (response.status === 403) {
-                    setError("You do not have permission to view this inbox.");
+                    setError("Você não tem permissão para ver esta caixa de entrada.");
                 } else {
-                    setError("Failed to load mails.");
+                    setError("Falha ao carregar emails.");
                 }
             } catch (err) {
                 console.error(err);
-                setError("Connection error.");
+                setError("Erro de conexão.");
             } finally {
                 setLoading(false);
             }
@@ -67,7 +67,7 @@ function Inbox() {
         }
     };
 
-    if (loading) return <div className="app-container"><div className="card">Loading Inbox...</div></div>;
+    if (loading) return <div className="app-container"><div className="card">Carregando Caixa de Entrada...</div></div>;
 
     const unreadCount = mails.filter(m => !m.is_read).length;
 
@@ -77,16 +77,16 @@ function Inbox() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h1 style={{ margin: 0, fontSize: '2rem' }}>
-                        📫 Inbox <span style={{ background: '#ff4444', color: '#fff', fontSize: '1rem', padding: '2px 8px', borderRadius: '12px', verticalAlign: 'middle', display: unreadCount > 0 ? 'inline-block' : 'none' }}>{unreadCount} Unread</span>
+                        📫 Caixa de Entrada <span style={{ background: '#ff4444', color: '#fff', fontSize: '1rem', padding: '2px 8px', borderRadius: '12px', verticalAlign: 'middle', display: unreadCount > 0 ? 'inline-block' : 'none' }}>{unreadCount} Não lido(s)</span>
                     </h1>
-                    <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#333' }}>Back to Hub</button>
+                    <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#333' }}>Voltar ao Hub</button>
                 </div>
 
                 {error && <div className="message error">{error}</div>}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                     {mails.length === 0 && !error ? (
-                        <div className="card" style={{ textAlign: 'center', color: '#888' }}>No messages in your inbox.</div>
+                        <div className="card" style={{ textAlign: 'center', color: '#888' }}>Nenhuma mensagem na sua caixa de entrada.</div>
                     ) : (
                         mails.map(mail => {
                             const isReward = mail.type === 'REWARD';
@@ -102,15 +102,15 @@ function Inbox() {
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <div>
                                             <div style={{ fontSize: '0.8rem', color: isReward ? '#fca311' : (isMeeting ? '#bb86fc' : '#888'), fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                                                {mail.type} {mail.recipient_id ? '' : '(Company Wide)'}
+                                                {mail.type} {mail.recipient_id ? '' : '(Toda a Empresa)'}
                                             </div>
                                             <h3 style={{ margin: '0.3rem 0', fontSize: '1.3rem', color: '#fff' }}>{mail.subject}</h3>
-                                            <div style={{ fontSize: '0.9rem', color: '#aaa' }}>From: <span style={{ color: '#fff' }}>{mail.sender_name || mail.sender_id}</span></div>
+                                            <div style={{ fontSize: '0.9rem', color: '#aaa' }}>De: <span style={{ color: '#fff' }}>{mail.sender_name || mail.sender_id}</span></div>
                                         </div>
                                         <div style={{ textAlign: 'right', fontSize: '0.8rem', color: '#666' }}>
-                                            {new Date(mail.timestamp).toLocaleString()}
+                                            {new Date(mail.timestamp).toLocaleString('pt-BR')}
                                             {!mail.is_read && (
-                                                <button onClick={() => handleMarkAsRead(mail.id)} style={{ display: 'block', marginTop: '10px', background: 'transparent', border: '1px solid #555', color: '#ccc', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Mark as Read</button>
+                                                <button onClick={() => handleMarkAsRead(mail.id)} style={{ display: 'block', marginTop: '10px', background: 'transparent', border: '1px solid #555', color: '#ccc', borderRadius: '4px', padding: '4px 8px', cursor: 'pointer' }}>Marcar como Lido</button>
                                             )}
                                         </div>
                                     </div>
@@ -121,13 +121,13 @@ function Inbox() {
 
                                     {isMeeting && mail.meeting_time && (
                                         <div style={{ background: 'rgba(187, 134, 252, 0.1)', border: '1px solid rgba(187,134,252,0.3)', padding: '0.8rem', borderRadius: '8px', color: '#bb86fc', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                            <span>📅</span> <strong>Scheduled Time:</strong> {new Date(mail.meeting_time).toLocaleString()}
+                                            <span>📅</span> <strong>Horário Agendado:</strong> {new Date(mail.meeting_time).toLocaleString('pt-BR')}
                                         </div>
                                     )}
 
                                     {isReward && mail.bonus_amount > 0 && (
                                         <div style={{ background: 'rgba(252, 163, 17, 0.1)', border: '1px solid rgba(252,163,17,0.3)', padding: '0.8rem', borderRadius: '8px', color: '#fca311', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.2rem', fontWeight: 'bold' }}>
-                                            <span>💰</span> Bonus Granted: ${mail.bonus_amount.toLocaleString()}
+                                            <span>💰</span> Bônus Concedido: {mail.bonus_amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                                         </div>
                                     )}
                                 </div>

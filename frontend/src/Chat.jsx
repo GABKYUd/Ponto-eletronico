@@ -12,14 +12,14 @@ function Chat() {
     const navigate = useNavigate();
 
     const TEAM_CHANNELS = [
-        { id: 'team:marketing', name: '# Marketing', role: 'Team Channel', isTeam: true },
-        { id: 'team:printing', name: '# Printing', role: 'Team Channel', isTeam: true },
-        { id: 'team:logistics', name: '# Logistics', role: 'Team Channel', isTeam: true },
+        { id: 'team:marketing', name: '# Marketing', role: 'Canal da Equipe', isTeam: true },
+        { id: 'team:printing', name: '# Impressão', role: 'Canal da Equipe', isTeam: true },
+        { id: 'team:logistics', name: '# Logística', role: 'Canal da Equipe', isTeam: true },
     ];
 
     // Get current user info from localStorage
     const currentUserId = localStorage.getItem('employeeId');
-    const [currentUserName, setCurrentUserName] = useState('User');
+    const [currentUserName, setCurrentUserName] = useState('Usuário');
 
     const selectedUserRef = useRef(selectedUser);
 
@@ -96,7 +96,7 @@ function Chat() {
                 setUsers(data.filter(u => u.id !== currentUserId));
             }
         } catch (err) {
-            console.error('Failed to load contacts');
+            console.error('Falha ao carregar contatos');
         }
     };
 
@@ -150,7 +150,7 @@ function Chat() {
             setInput('');
             fetchMessages(); // Refresh immediately
         } catch (err) {
-            alert('Failed to send');
+            alert('Falha ao enviar');
         }
     };
 
@@ -160,8 +160,8 @@ function Chat() {
                 {/* Sidebar */}
                 <div className="chat-sidebar">
                     <div className="sidebar-header">
-                        <h3>💬 Messenger</h3>
-                        <button onClick={() => navigate('/employee-hub')} className="btn-small">Back</button>
+                        <h3>💬 Mensageiro</h3>
+                        <button onClick={() => navigate('/employee-hub')} className="btn-small">Voltar</button>
                     </div>
 
                     <div className="sidebar-list">
@@ -171,12 +171,12 @@ function Chat() {
                         >
                             <div className="avatar global">🌎</div>
                             <div className="info">
-                                <div className="name">General Chat</div>
-                                <div className="status">Public Room</div>
+                                <div className="name">Chat Geral</div>
+                                <div className="status">Sala Pública</div>
                             </div>
                         </div>
 
-                        <div className="sidebar-divider">Team Channels</div>
+                        <div className="sidebar-divider">Canais de Equipe</div>
                         {TEAM_CHANNELS.map(team => (
                             <div
                                 key={team.id}
@@ -191,7 +191,7 @@ function Chat() {
                             </div>
                         ))}
 
-                        <div className="sidebar-divider">Direct Messages</div>
+                        <div className="sidebar-divider">Mensagens Diretas</div>
 
                         {users.map(u => (
                             <div
@@ -216,14 +216,14 @@ function Chat() {
                             {selectedUser ? selectedUser.name.charAt(0).toUpperCase() : '🌎'}
                         </div>
                         <div className="header-info">
-                            <h3>{selectedUser ? selectedUser.name : 'General Chat'}</h3>
-                            <span>{selectedUser ? 'Private Conversation' : 'Everyone can see this'}</span>
+                            <h3>{selectedUser ? selectedUser.name : 'Chat Geral'}</h3>
+                            <span>{selectedUser ? 'Conversa Privada' : 'Todos podem ver isso'}</span>
                         </div>
                     </div>
 
                     <div className="chat-messages-area">
                         {messages.length === 0 && (
-                            <div className="empty-state">No messages yet. Say hi! 👋</div>
+                            <div className="empty-state">Nenhuma mensagem ainda. Diga oi! 👋</div>
                         )}
                         {messages.map((msg, idx) => {
                             const isMine = msg.user_id === currentUserId;
@@ -249,7 +249,7 @@ function Chat() {
                             className="chat-input"
                             value={input}
                             onChange={e => setInput(e.target.value)}
-                            placeholder={`Message ${selectedUser ? selectedUser.name : 'everyone'}...`}
+                            placeholder={`Mensagem para ${selectedUser ? selectedUser.name : 'todos'}...`}
                         />
                         <button type="submit" className="send-btn">➤</button>
                     </form>

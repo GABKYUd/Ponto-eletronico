@@ -24,7 +24,7 @@ function Home({ motd }) {
         else return;
 
         if (!employeeId.trim() || (!body.password && !body.code)) {
-            setError('ID and Credentials are required.');
+            setError('ID e credenciais são obrigatórios.');
             return;
         }
 
@@ -47,10 +47,10 @@ function Home({ motd }) {
                 }
                 navigate('/employee-hub');
             } else {
-                setError(data.error || 'Login failed');
+                setError(data.error || 'Falha no login');
             }
         } catch (err) {
-            setError('Connection failed');
+            setError('Falha na conexão');
         } finally {
             setLoading(false);
         }
@@ -82,11 +82,12 @@ function Home({ motd }) {
             }}>
 
                 <div style={{ marginBottom: '2rem' }}>
+                    <img src="/Kyu_Shop.png" alt="Kyu INC Logo" style={{ width: '150px', marginBottom: '1rem', borderRadius: '12px' }} />
                     <h1 style={{
                         fontSize: '2.5rem', margin: '0 0 0.5rem 0', fontWeight: '800',
                         background: 'linear-gradient(to right, #bb86fc, #03dac6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
                         letterSpacing: '-1px'
-                    }}>Welcome to KYU INC</h1>
+                    }}>Bem-vindo à KYU INC</h1>
                 </div>
 
                 {motd && (
@@ -105,21 +106,21 @@ function Home({ motd }) {
                         onClick={() => setPassword('')}
                         style={password !== undefined ? { background: 'linear-gradient(135deg, #bb86fc, #9965f4)', color: '#fff', boxShadow: '0 4px 15px rgba(187,134,252,0.3)' } : {}}
                     >
-                        🔑 Password
+                        🔑 Senha
                     </div>
                     <div
                         className={`toggle-option ${password === undefined ? 'active' : ''}`}
                         onClick={() => setPassword(undefined)}
                         style={password === undefined ? { background: 'linear-gradient(135deg, #03dac6, #01bca7)', color: '#000', boxShadow: '0 4px 15px rgba(3,218,198,0.3)' } : {}}
                     >
-                        🛡️ Authenticator
+                        🛡️ Autenticador
                     </div>
                 </div>
 
                 <div className="input-group" style={{ marginBottom: '1rem' }}>
                     <input
                         type="text"
-                        placeholder="Employee ID"
+                        placeholder="ID do Funcionário"
                         className="input-field"
                         value={employeeId}
                         onChange={(e) => setEmployeeId(e.target.value)}
@@ -132,7 +133,7 @@ function Home({ motd }) {
                     {password !== undefined ? (
                         <input
                             type="password"
-                            placeholder="Password"
+                            placeholder="Senha"
                             className="input-field"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
@@ -159,7 +160,7 @@ function Home({ motd }) {
                     boxShadow: '0 4px 15px rgba(98,0,234,0.4)',
                     transition: 'all 0.3s ease'
                 }}>
-                    {loading ? 'Authenticating...' : 'Enter Workspace'}
+                    {loading ? 'Autenticando...' : 'Entrar no Workspace'}
                 </button>
 
                 {error && (
@@ -170,7 +171,7 @@ function Home({ motd }) {
 
                 <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                     <button onClick={() => navigate('/login')} className="btn" style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)' }}>
-                        HR Dashboard Login
+                        Login do Painel de RH
                     </button>
                 </div>
             </div>

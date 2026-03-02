@@ -11,7 +11,6 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // OWASP Security Headers (Helmet)
-// OWASP Security Headers (Helmet)
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
@@ -19,14 +18,30 @@ app.use(helmet({
             scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
             styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
             imgSrc: ["'self'", "data:", "http://localhost:3001", "https:"],
-            connectSrc: ["'self'", "http://localhost:3001", "ws://localhost:3001", "wss:", "https:"]
+            connectSrc: ["'self'", "http://localhost:3001", "ws://localhost:3001", "wss:", "https:"],
+            fontSrc: ["'self'", "https://fonts.gstatic.com"],
+            objectSrc: ["'none'"],
+            upgradeInsecureRequests: [],
         }
     },
-    crossOriginResourcePolicy: { policy: "cross-origin" }
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+    xContentTypeOptions: true,
+    xDnsPrefetchControl: { allow: false },
+    xFrameOptions: { action: "deny" }
 }));
 
 app.use(cors());
 app.use(express.json());
+
+// Basic Rate Limiting
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 800, // limit each IP to 800 requests per windowMs to avoid dev/testing issues
+    message: { error: 'Too many requests from this IP, please try again after 15 minutes' }
+});
+app.use('/api/', limiter);
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -37,7 +52,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 // Cloudinary Setup
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinaryStorage = require('multer-storage-cloudinary');
 
 if (process.env.CLOUDINARY_URL) {
     // Cloudinary automatically configures via the CLOUDINARY_URL env var
@@ -61,12 +76,10 @@ const localStorage = multer.diskStorage({
     }
 });
 
-const cloudStorage = new CloudinaryStorage({
+const cloudStorage = cloudinaryStorage({
     cloudinary: cloudinary,
-    params: {
-        folder: 'ponto-uploads',
-        allowed_formats: ['jpg', 'png', 'webp', 'jpeg']
-    },
+    folder: 'ponto-uploads',
+    allowedFormats: ['jpg', 'png', 'webp', 'jpeg'],
 });
 
 const fileFilter = (req, file, cb) => {
@@ -100,20 +113,22 @@ const authRoutes = require('./routes/auth.routes');
 const clockRoutes = require('./routes/clock.routes');
 const hrRoutes = require('./routes/hr.routes');
 const socialRoutes = require('./routes/social.routes');
+const receiptRoutes = require('./routes/receipt.routes');
 
 // Apply Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/clock', clockRoutes);
 app.use('/api', hrRoutes); // Contains /users, /mails, /reports
 app.use('/api', socialRoutes); // Contains /chat, /posts, /profile, /certifications
+app.use('/api/receipts', receiptRoutes);
 
 // API: Get Message of the Day (MOTD)
 app.get('/api/motd', (req, res) => {
     const messages = [
-        "Roll for initiative... against the Monday blues! 🎲",
-        "You pretend to pay me, I pretend to work. 👀",
-        "Cannot align text-center. Send help. CSS is hard. 🎨",
-        "It's not a bug, it's a feature. 🐞"
+        "Role a iniciativa... contra a preguiça de segunda-feira! 🎲",
+        "Você finge que me paga, eu finjo que trabalho. 👀",
+        "Não consigo alinhar o texto no centro. Socorro. CSS é difícil. 🎨",
+        "Não é um bug, é uma funcionalidade. 🐞"
     ];
     const index = Math.floor(Math.random() * messages.length);
     res.json({ message: messages[index] });
@@ -142,10 +157,69 @@ io.on('connection', (socket) => {
     console.log('New client connected via WebSocket:', socket.id);
 
     // Optional: Keep track of active users, read receipts, etc.
+    // Store user id on socket when they authenticate/connect
+    socket.on('register_user', (userId) => {
+        socket.userId = userId;
+        console.log(`Socket ${socket.id} registered for user ${userId}`);
+    });
+
     socket.on('disconnect', () => {
         console.log('Client disconnected:', socket.id);
     });
 });
+
+// Auto-Break and Alert Scheduler
+const { run, all } = require('./database');
+const userService = require('./users');
+
+setInterval(async () => {
+    try {
+        // Run every minute. Get punches for today to determine state.
+        const today = new Date().toISOString().split('T')[0];
+        const punches = await all("SELECT * FROM punches WHERE timestamp LIKE ? ORDER BY timestamp ASC", [`${today}%`]);
+        const users = await userService.getAllUsers();
+
+        users.forEach(async (user) => {
+            const userPunches = punches.filter(p => p.user_id === user.id);
+            if (userPunches.length === 0) return;
+
+            const lastPunch = userPunches[userPunches.length - 1];
+            const now = new Date();
+            const lastPunchTime = new Date(lastPunch.timestamp);
+            const durationMins = (now - lastPunchTime) / (1000 * 60);
+
+            // 1. Auto-assign break after 1 hour (60 mins) of work
+            if (lastPunch.type === 'IN' || lastPunch.type === 'BREAK_END') {
+                if (durationMins >= 60) {
+                    console.log(`Alerting user ${user.id} (${user.name}) to take a break`);
+
+                    // Notify user via WebSocket
+                    io.sockets.sockets.forEach(s => {
+                        if (s.userId === user.id) {
+                            s.emit('auto_break_started', { message: 'Você já trabalhou por muito tempo. Por favor, lembre-se de registrar o início da sua pausa no sistema.' });
+                        }
+                    });
+                }
+            }
+
+            // 2. Alert after 30 mins of break time
+            if (lastPunch.type === 'BREAK_START' && durationMins >= 30) {
+                // To avoid spamming every minute after 30 mins, we can check if it's exactly 30 or we can just send the alert.
+                // Let's just send it if it's between 30 and 31 minutes to trigger once.
+                if (durationMins >= 30 && durationMins < 31) {
+                    console.log(`Alerting user ${user.id} (${user.name}) that break is over.`);
+                    io.sockets.sockets.forEach(s => {
+                        if (s.userId === user.id) {
+                            s.emit('break_over_alert', { message: 'Atenção: Seu intervalo de 30 minutos terminou. Lembre-se de bater o ponto de volta!' });
+                        }
+                    });
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error in Auto-Break scheduler:', err);
+    }
+}, 60 * 1000); // Check every 60 seconds
 
 // --- Production Ready Static File Serving ---
 // In production, serve the compiled React SPA

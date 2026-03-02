@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import './index.css';
 
 function EmployeeHub() {
@@ -11,6 +12,7 @@ function EmployeeHub() {
     const [punches, setPunches] = useState([]);
     const [showBreakPrompt, setShowBreakPrompt] = useState(false);
     const [unreadMails, setUnreadMails] = useState(0);
+    const [socketAlert, setSocketAlert] = useState(null);
     const navigate = useNavigate();
 
     // A simple synthesized double beep using Web Audio API
@@ -116,8 +118,34 @@ function EmployeeHub() {
         fetchTodayPunches();
         fetchMails();
 
+        // WebSocket Setup
+        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+        newSocket.on('connect', () => {
+            newSocket.emit('register_user', storedId);
+        });
+
+        newSocket.on('auto_break_started', (data) => {
+            setSocketAlert(data.message);
+            playBreakAudio();
+            fetchTodayPunches(); // Refresh to see the new BREAK_START
+
+            // Auto dismiss alert after 10s
+            setTimeout(() => setSocketAlert(null), 10000);
+        });
+
+        newSocket.on('break_over_alert', (data) => {
+            setSocketAlert(data.message);
+            playBreakAudio();
+
+            // Auto dismiss alert after 15s
+            setTimeout(() => setSocketAlert(null), 15000);
+        });
+
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            newSocket.disconnect();
+        };
     }, [navigate]);
 
     useEffect(() => {
@@ -168,26 +196,35 @@ function EmployeeHub() {
                 if (pRes.ok) setPunches(await pRes.json());
             }
         } catch (error) {
-            setMessage({ type: 'error', text: 'Connection failed.' });
+            setMessage({ type: 'error', text: 'Falha na conexão.' });
         } finally {
             setLoading(false);
         }
     };
 
-    if (!user) return <div className="app-container">Loading...</div>;
-    if (user.error) return <div className="app-container" style={{ color: 'red' }}><b>Error loading user:</b> {user.text}<br /><button className="btn" onClick={() => { localStorage.removeItem('employeeId'); navigate('/'); }}>Go Back to Login</button></div>;
+    if (!user) return <div className="app-container">Carregando...</div>;
+    if (user.error) return <div className="app-container" style={{ color: 'red' }}><b>Erro ao carregar usuário:</b> {user.text}<br /><button className="btn" onClick={() => { localStorage.removeItem('employeeId'); navigate('/'); }}>Voltar ao Login</button></div>;
 
     return (
         <div className="app-container" style={{ alignItems: 'flex-start', paddingTop: '2rem' }}>
+            {socketAlert && (
+                <div style={{ position: 'fixed', top: '20px', right: '20px', zIndex: 9999, background: '#fca311', color: '#000', padding: '15px 20px', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '300px' }}>
+                    <span style={{ fontSize: '1.5rem' }}>⏰</span>
+                    <div>
+                        <strong>Aviso de Sistema</strong><br />
+                        <span style={{ fontSize: '0.9rem' }}>{socketAlert}</span>
+                    </div>
+                </div>
+            )}
             <div style={{ width: '100%', maxWidth: '1000px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
 
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <h1 style={{ margin: 0, fontSize: '2.5rem', fontWeight: '800' }}>
-                        Welcome back,<br />
+                        Bem-vindo(a) de volta,<br />
                         <span style={{ color: '#bb86fc' }}>{user.name}</span>
                     </h1>
-                    <button onClick={() => { localStorage.removeItem('employeeId'); navigate('/'); }} className="btn" style={{ background: '#333' }}>Logout</button>
+                    <button onClick={() => { localStorage.removeItem('employeeId'); navigate('/'); }} className="btn" style={{ background: '#333' }}>Sair</button>
                 </div>
 
                 {/* Main Grid */}
@@ -196,7 +233,7 @@ function EmployeeHub() {
                     {/* Time & Clock Card */}
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                         <div>
-                            <h3 style={{ marginTop: 0, color: '#aaa' }}>Time & Connectivity</h3>
+                            <h3 style={{ marginTop: 0, color: '#aaa' }}>Tempo & Conectividade</h3>
                             <div style={{ fontSize: '3rem', fontWeight: 'bold', fontFamily: 'monospace' }}>
                                 {currentTime.toLocaleTimeString('pt-BR')}
                             </div>
@@ -206,30 +243,36 @@ function EmployeeHub() {
                         </div>
 
                         <div className="button-group-vertical" style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr 1fr' }}>
-                            <button disabled={loading} onClick={() => handleClock('IN')} className="btn btn-in" style={{ padding: '20px' }}>CLOCK IN</button>
-                            <button disabled={loading} onClick={() => handleClock('OUT')} className="btn btn-out" style={{ padding: '20px' }}>CLOCK OUT</button>
-                            <button disabled={loading} onClick={() => handleClock('BREAK_START')} className="btn btn-break-start">Start Break</button>
-                            <button disabled={loading} onClick={() => handleClock('BREAK_END')} className="btn btn-break-end">End Break</button>
+                            <button disabled={loading} onClick={() => handleClock('IN')} className="btn btn-in" style={{ padding: '20px' }}>ENTRADA</button>
+                            <button disabled={loading} onClick={() => handleClock('OUT')} className="btn btn-out" style={{ padding: '20px' }}>SAÍDA</button>
+                            <button disabled={loading} onClick={() => handleClock('BREAK_START')} className="btn btn-break-start">Iniciar Pausa</button>
+                            <button disabled={loading} onClick={() => handleClock('BREAK_END')} className="btn btn-break-end">Fim da Pausa</button>
                         </div>
                         {message && <div className={`message ${message.type}`} style={{ marginTop: '1rem' }}>{message.text}</div>}
 
                         {showBreakPrompt && (
                             <div style={{ marginTop: '1rem', background: 'rgba(252, 163, 17, 0.15)', border: '1px solid #fca311', padding: '1rem', borderRadius: '8px', color: '#fca311', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                <strong>☕ Time for a Break!</strong>
-                                <span style={{ fontSize: '0.9rem' }}>You've been working continuously for over an hour. Consider taking a 30-minute break.</span>
-                                <button onClick={() => handleClock('BREAK_START')} className="btn" style={{ background: '#fca311', color: '#000', padding: '8px' }}>Start 30min Break Now</button>
+                                <strong>☕ Hora de uma pausa!</strong>
+                                <span style={{ fontSize: '0.9rem' }}>Você está trabalhando continuamente há mais de uma hora. Considere fazer uma pausa de 30 minutos.</span>
+                                <button onClick={() => handleClock('BREAK_START')} className="btn" style={{ background: '#fca311', color: '#000', padding: '8px' }}>Iniciar Pausa de 30min Agora</button>
                             </div>
                         )}
                     </div>
 
                     {/* Social Zone */}
                     <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'linear-gradient(135deg, #2b2b2b, #1e1e1e)' }}>
-                        <h3 className="title" style={{ fontSize: '1.4rem' }}>🎉 Workspace</h3>
+                        <h3 className="title" style={{ fontSize: '1.4rem' }}>🎉 Área de Trabalho</h3>
 
-                        <div style={{ display: 'flex', gap: '1rem' }}>
-                            <button className="btn" onClick={() => navigate('/chat')} style={{ background: '#bb86fc', flex: 1 }}>💬 Chat</button>
-                            <button className="btn" onClick={() => navigate('/inbox')} style={{ background: '#fca311', color: '#000', flex: 1, position: 'relative' }}>
-                                📫 Inbox
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                            <button className="btn" onClick={() => navigate('/chat')} style={{ background: '#3b82f6', color: '#fff', flex: 1 }}>💬 Chat</button>
+                            {['Vendors', 'Selling manager', 'Selling & merchandise representative', 'Merchandising', 'HR', 'HRAssistant'].includes(user?.role) && (
+                                <>
+                                    <button className="btn" onClick={() => navigate('/receipts')} style={{ background: '#2563eb', color: '#fff', flex: 1 }}>🧾 Recibos</button>
+                                    <button className="btn" onClick={() => navigate('/calculator')} style={{ background: '#059669', color: '#fff', flex: 1 }}>🧮 Calculadora</button>
+                                </>
+                            )}
+                            <button className="btn" onClick={() => navigate('/inbox')} style={{ background: '#1d4ed8', color: '#fff', flex: 1, position: 'relative' }}>
+                                📫 Caixa de Entrada
                                 {unreadMails > 0 && (
                                     <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#ff4444', color: '#fff', fontSize: '0.8rem', padding: '2px 6px', borderRadius: '50%', fontWeight: 'bold' }}>
                                         {unreadMails}
@@ -238,20 +281,20 @@ function EmployeeHub() {
                             </button>
                         </div>
 
-                        {user?.role === 'HR' && (
-                            <button className="btn" onClick={() => navigate('/dashboard')} style={{ background: '#ff4444', color: '#fff', border: '1px solid #772222' }}>🏢 Enter HR Command Center</button>
+                        {['HR', 'HRAssistant'].includes(user?.role) && (
+                            <button className="btn" onClick={() => navigate('/dashboard')} style={{ background: '#ff4444', color: '#fff', border: '1px solid #772222' }}>🏢 Acessar Centro de Comando RH</button>
                         )}
 
                         <div style={{ borderTop: '1px solid #333', margin: '1rem 0' }}></div>
 
-                        <button className="btn" onClick={() => navigate('/profile')} style={{ background: '#333', border: '1px solid #555' }}>👤 My Profile</button>
-                        <button className="btn" onClick={() => navigate('/settings')} style={{ background: 'transparent', border: '1px solid #555' }}>⚙️ Settings</button>
+                        <button className="btn" onClick={() => navigate('/profile')} style={{ background: '#333', border: '1px solid #555' }}>👤 Meu Perfil</button>
+                        <button className="btn" onClick={() => navigate('/settings')} style={{ background: 'transparent', border: '1px solid #555' }}>⚙️ Configurações</button>
                     </div>
                 </div>
 
                 {/* Quick Contacts */}
                 <div style={{ marginTop: '2rem' }}>
-                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#888' }}>QUICK TEAM ACCESS</h4>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', color: '#888' }}>ACESSO RÁPIDO À EQUIPE</h4>
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
                         {users.map(u => (
                             <div key={u.id} title={u.name} style={{ width: '40px', height: '40px', background: '#555', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', cursor: 'pointer' }} onClick={() => navigate('/chat')}>

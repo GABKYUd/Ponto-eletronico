@@ -109,7 +109,7 @@ router.get('/reports', authenticateHR, async (req, res) => {
         res.json(analysis);
     } catch (err) {
         console.error('Error reading DB:', err);
-        res.status(500).json({ error: 'Failed to generate report.' });
+        res.status(500).json({ error: 'Falha ao gerar relatório.' });
     }
 });
 
@@ -156,7 +156,7 @@ router.get('/users', authenticateUser, async (req, res) => {
         const users = await all("SELECT id, name, role FROM users");
         res.json(users);
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch users.' });
+        res.status(500).json({ error: 'Falha ao buscar usuários.' });
     }
 });
 
@@ -164,8 +164,8 @@ router.get('/users', authenticateUser, async (req, res) => {
 router.post('/mails', authenticateHR, async (req, res) => {
     const { recipientId, subject, content, type, bonusAmount, meetingTime } = req.body;
 
-    if (!subject || !content) return res.status(400).json({ error: 'Subject and Content are required.' });
-    if (!['MAIL', 'MEETING', 'REWARD'].includes(type)) return res.status(400).json({ error: 'Invalid mail type.' });
+    if (!subject || !content) return res.status(400).json({ error: 'Assunto e Conteúdo são obrigatórios.' });
+    if (!['MAIL', 'MEETING', 'REWARD'].includes(type)) return res.status(400).json({ error: 'Tipo de email inválido.' });
 
     try {
         const timestamp = new Date().toISOString();
@@ -176,16 +176,16 @@ router.post('/mails', authenticateHR, async (req, res) => {
             "INSERT INTO mails (sender_id, recipient_id, subject, content, type, bonus_amount, meeting_time, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             [req.user.id, recipientId || null, cleanSubject, cleanContent, type, bonusAmount || 0, meetingTime || null, timestamp]
         );
-        res.json({ success: true, message: 'Mail sent successfully.' });
+        res.json({ success: true, message: 'Email enviado com sucesso.' });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to send mail.' });
+        res.status(500).json({ error: 'Falha ao enviar email.' });
     }
 });
 
 // Get User's Mails
 router.get('/mails/:userId', authenticateUser, async (req, res) => {
-    if (req.params.userId !== req.user.id && req.user.role !== 'HR') {
-        return res.status(403).json({ error: 'Forbidden' });
+    if (req.params.userId !== req.user.id && !['HR', 'HRAssistant'].includes(req.user.role)) {
+        return res.status(403).json({ error: 'Acesso negado' });
     }
 
     try {
@@ -198,7 +198,7 @@ router.get('/mails/:userId', authenticateUser, async (req, res) => {
         `, [req.params.userId]);
         res.json(mails);
     } catch (err) {
-        res.status(500).json({ error: 'Failed fetching mails.' });
+        res.status(500).json({ error: 'Falha ao buscar emails.' });
     }
 });
 
@@ -206,22 +206,22 @@ router.get('/mails/:userId', authenticateUser, async (req, res) => {
 router.put('/mails/:id/read', authenticateUser, async (req, res) => {
     try {
         const mail = await get("SELECT recipient_id FROM mails WHERE id = ?", [req.params.id]);
-        if (!mail) return res.status(404).json({ error: 'Mail not found' });
+        if (!mail) return res.status(404).json({ error: 'Email não encontrado' });
 
-        if (mail.recipient_id && mail.recipient_id !== req.user.id && req.user.role !== 'HR') {
-            return res.status(403).json({ error: 'Forbidden. You do not own this mail.' });
+        if (mail.recipient_id && mail.recipient_id !== req.user.id && !['HR', 'HRAssistant'].includes(req.user.role)) {
+            return res.status(403).json({ error: 'Acesso negado. Este email não pertence a você.' });
         }
 
         if (!mail.recipient_id) {
             // It's a company-wide mail. We don't mark it read globally.
             // Just return success so the frontend dismisses it for the current session.
-            return res.json({ success: true, message: 'Dismissed locally' });
+            return res.json({ success: true, message: 'Ignorado localmente' });
         }
 
         await run("UPDATE mails SET is_read = 1 WHERE id = ?", [req.params.id]);
         res.json({ success: true });
     } catch (err) {
-        res.status(500).json({ error: 'Update failed.' });
+        res.status(500).json({ error: 'Falha na atualização.' });
     }
 });
 
@@ -232,10 +232,10 @@ router.get('/users/:id', authenticateUser, async (req, res) => {
             "SELECT id, name, role, email, bio, pfp, shift_expectation FROM users WHERE id = ?",
             [req.params.id]
         );
-        if (!user) return res.status(404).json({ error: 'User not found.' });
+        if (!user) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
         // Information Disclosure / IDOR fix: Hide private fields from standard employees
-        if (req.user.id !== req.params.id && req.user.role !== 'HR') {
+        if (req.user.id !== req.params.id && !['HR', 'HRAssistant'].includes(req.user.role)) {
             delete user.email;
             delete user.shift_expectation;
         }
@@ -243,7 +243,7 @@ router.get('/users/:id', authenticateUser, async (req, res) => {
         const certifications = await all("SELECT * FROM certifications WHERE user_id = ?", [req.params.id]);
         res.json({ ...user, certifications });
     } catch (err) {
-        res.status(500).json({ error: 'Server error' });
+        res.status(500).json({ error: 'Erro no servidor' });
     }
 });
 
@@ -252,9 +252,9 @@ router.put('/users/:id/shift', authenticateHR, async (req, res) => {
     const { shift_expectation } = req.body;
     try {
         await run("UPDATE users SET shift_expectation = ? WHERE id = ?", [shift_expectation, req.params.id]);
-        res.json({ success: true, message: 'Shift updated successfully.' });
+        res.json({ success: true, message: 'Turno atualizado com sucesso.' });
     } catch (err) {
-        res.status(500).json({ error: 'Failed to update shift bounds.' });
+        res.status(500).json({ error: 'Falha ao atualizar limites de turno.' });
     }
 });
 
@@ -331,7 +331,7 @@ router.get('/reports/weekly', authenticateHR, async (req, res) => {
         res.json(report);
     } catch (err) {
         console.error('Failed to generate weekly report', err);
-        res.status(500).json({ error: 'Failed to generate weekly report' });
+        res.status(500).json({ error: 'Falha ao gerar relatório semanal' });
     }
 });
 
