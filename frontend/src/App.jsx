@@ -14,7 +14,7 @@ import InvoiceCalculator from './InvoiceCalculator';
 import './index.css';
 
 function PrivateRoute({ children }) {
-  const token = localStorage.getItem('hrToken');
+  const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
   return token ? children : <Navigate to="/login" />;
 }
 

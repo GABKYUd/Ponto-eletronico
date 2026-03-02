@@ -89,7 +89,7 @@ function Chat() {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('hrToken');
+            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -112,7 +112,7 @@ function Chat() {
             }
             // If General, url is just /api/chat (endpoint handles public default)
 
-            const token = localStorage.getItem('hrToken');
+            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             const res = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -141,7 +141,7 @@ function Chat() {
                 body.recipientId = selectedUser.id;
             }
 
-            const token = localStorage.getItem('hrToken');
+            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/chat`, {
                 method: 'POST',
                 headers: {

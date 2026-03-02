@@ -12,7 +12,7 @@ function Inbox() {
     useEffect(() => {
         const storedId = localStorage.getItem('employeeId') || localStorage.getItem('userId');
         const fetchMails = async () => {
-            const token = localStorage.getItem('hrToken');
+            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             if (!storedId || !token) { navigate('/'); return; }
 
             try {
@@ -48,7 +48,7 @@ function Inbox() {
     }, [navigate]);
 
     const handleMarkAsRead = async (mailId) => {
-        const token = localStorage.getItem('hrToken');
+        const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
         if (!token) return;
 
         try {
