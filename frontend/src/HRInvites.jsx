@@ -8,7 +8,7 @@ const HRInvites = ({ isHR }) => {
     const [lastGeneratedToken, setLastGeneratedToken] = useState(null);
     const [loading, setLoading] = useState(false);
 
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
     const role = localStorage.getItem('role');
 
     useEffect(() => {
@@ -20,7 +20,7 @@ const HRInvites = ({ isHR }) => {
 
     const fetchInvites = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/hr/invites', {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/hr/invites`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setInvites(res.data);
@@ -31,7 +31,7 @@ const HRInvites = ({ isHR }) => {
 
     const fetchEmployees = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/users', {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users`, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             setEmployees(res.data);
@@ -44,7 +44,7 @@ const HRInvites = ({ isHR }) => {
         if (loading) return;
         setLoading(true);
         try {
-            const res = await axios.post('http://localhost:3000/api/hr/invite', {}, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/hr/invite`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
@@ -60,7 +60,7 @@ const HRInvites = ({ isHR }) => {
 
     const handleRevokeInvite = async (inviteId) => {
         try {
-            const res = await axios.put(`http://localhost:3000/api/hr/invites/${inviteId}/revoke`, {}, {
+            const res = await axios.put(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/hr/invites/${inviteId}/revoke`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
@@ -75,7 +75,7 @@ const HRInvites = ({ isHR }) => {
     const handleRevokeUserSessions = async (userId, userName) => {
         if (!window.confirm(`ATENÇÃO: Deseja realmente desconectar o usuário '${userName}' de todos os dispositivos imediatamente?`)) return;
         try {
-            const res = await axios.post(`http://localhost:3000/api/hr/users/${userId}/revoke-sessions`, {}, {
+            const res = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/hr/users/${userId}/revoke-sessions`, {}, {
                 headers: { Authorization: `Bearer ${token}` }
             });
             if (res.data.success) {
