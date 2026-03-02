@@ -73,7 +73,7 @@ function EmployeeHub() {
         if (!storedId) { navigate('/'); return; }
 
         const authFetch = (url, options = {}) => {
-            const token = localStorage.getItem('hrToken');
+            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             const headers = { ...options.headers };
             if (token) headers['Authorization'] = `Bearer ${token}`;
             return fetch(url, { ...options, headers });
@@ -114,7 +114,7 @@ function EmployeeHub() {
         };
 
         const fetchMails = async () => {
-            const token = localStorage.getItem('hrToken');
+            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             if (!token) return;
             try {
                 const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/mails/${storedId}`, {
@@ -133,7 +133,7 @@ function EmployeeHub() {
         fetchMails();
 
         // WebSocket Setup
-        const wsToken = localStorage.getItem('hrToken');
+        const wsToken = localStorage.getItem('hrToken') || localStorage.getItem('token');
         const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
             auth: { token: wsToken }
         });
@@ -194,7 +194,7 @@ function EmployeeHub() {
     const handleClock = async (type) => {
         setLoading(true);
         setMessage(null);
-        const token = localStorage.getItem('hrToken');
+        const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/clock`, {
                 method: 'POST',
