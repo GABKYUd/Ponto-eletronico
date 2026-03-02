@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import HRInvites from './HRInvites';
 import './index.css';
 
 function Dashboard() {
@@ -12,6 +13,7 @@ function Dashboard() {
     const [weeklyReport, setWeeklyReport] = useState(null);
     const [showWeeklyReport, setShowWeeklyReport] = useState(false);
     const [updatingShift, setUpdatingShift] = useState(false);
+    const [showGovernance, setShowGovernance] = useState(false);
 
     // Mails/Rewards State
     const [mailSubject, setMailSubject] = useState('');
@@ -22,6 +24,20 @@ function Dashboard() {
     const [mailStatus, setMailStatus] = useState(null);
 
     const navigate = useNavigate();
+
+    const handleLogout = async () => {
+        const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
+        if (token) {
+            try {
+                await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (err) { console.error("Logout dispatch failed", err); }
+        }
+        localStorage.clear();
+        navigate('/');
+    };
 
     // HR-themed Welcome Messages
     const hrMessages = [
@@ -153,8 +169,8 @@ function Dashboard() {
                         <button onClick={() => navigate('/receipts')} className="btn" style={{ background: '#e0e0e0', color: '#000', fontSize: '0.9rem' }}>🧾 Recibos</button>
                         <button onClick={loadWeeklyReport} className="btn" style={{ background: '#01bca7', color: '#000', fontSize: '0.9rem' }}>📅 Relatório Semanal</button>
                         <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#bb86fc', color: '#000', fontSize: '0.9rem' }}>👨‍💻 Painel do Funcionário</button>
-                        <button onClick={() => navigate('/register')} className="btn" style={{ background: '#0070f3', fontSize: '0.9rem' }}>+ Nova Contratação</button>
-                        <button onClick={() => navigate('/')} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>Sair</button>
+                        <button onClick={() => { setShowGovernance(!showGovernance); setSelectedEmp(null); }} className="btn" style={{ background: showGovernance ? '#bb86fc' : '#333', color: showGovernance ? '#000' : '#fff', fontSize: '0.9rem', border: '1px solid #bb86fc' }}>🛡️ Governança</button>
+                        <button onClick={handleLogout} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>Sair</button>
                     </div>
                 </div>
 
@@ -205,9 +221,12 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {/* Details Panel - Power BI Style Dashboard */}
-                <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', background: '#121212', border: '1px solid #333', maxWidth: '100%', textAlign: 'left' }}>
-                    {selectedEmp && report[selectedEmp] ? (
+                {/* Details Panel - Power BI Style Dashboard or Governance */}
+                <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', background: '#121212', border: '1px solid #333', maxWidth: '100%', textAlign: 'left', overflowY: 'auto' }}>
+
+                    {showGovernance && <HRInvites isHR={true} />}
+
+                    {!showGovernance && selectedEmp && report[selectedEmp] ? (
                         <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
                             {/* Employee Header */}
                             <div style={{ borderBottom: '1px solid #333', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -426,13 +445,15 @@ function Dashboard() {
 
                         </div>
                     ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
-                            <div style={{ width: '150px', height: '150px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
-                                <span style={{ fontSize: '4rem', opacity: 0.5 }}>📊</span>
+                        !showGovernance && (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
+                                <div style={{ width: '150px', height: '150px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
+                                    <span style={{ fontSize: '4rem', opacity: 0.5 }}>📊</span>
+                                </div>
+                                <h2 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>Nenhum Funcionário Selecionado</h2>
+                                <p>Selecione um membro da equipe no diretório para gerar seu painel de análise.</p>
                             </div>
-                            <h2 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>Nenhum Funcionário Selecionado</h2>
-                            <p>Selecione um membro da equipe no diretório para gerar seu painel de análise.</p>
-                        </div>
+                        )
                     )}
                 </div>
 

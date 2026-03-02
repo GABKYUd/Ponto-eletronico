@@ -3,6 +3,7 @@ const crypto = require('crypto');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcrypt'); // Required for change-password
 const rateLimit = require('express-rate-limit');
 const userService = require('../users');
@@ -141,7 +142,8 @@ router.post('/login', authLimiter, async (req, res) => {
         }
 
         if (authenticated) {
-            const token = jwt.sign({ id, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
+            const jti = uuidv4();
+            const token = jwt.sign({ id, role: user.role, jti }, JWT_SECRET, { expiresIn: '8h' });
             await logAudit('LOGIN_SUCCESS', id, 'Successful login', req.ip);
 
             // Reset Failed Attempts
@@ -220,6 +222,25 @@ router.get('/2fa/qr/:userId', authenticateUser, async (req, res) => {
         });
     } catch (err) {
         res.status(500).json({ error: 'Falha ao buscar detalhes 2FA' });
+    }
+});
+
+// API: Logout (Revoke Current Token)
+router.post('/logout', authenticateUser, async (req, res) => {
+    try {
+        const { jti, exp } = req.user;
+        if (jti && exp) {
+            // Check if already revoked to avoid unique constraint errors if multiple calls
+            const existing = await get("SELECT * FROM revoked_tokens WHERE jti = ?", [jti]);
+            if (!existing) {
+                await run("INSERT INTO revoked_tokens (jti, expires_at) VALUES (?, ?)", [jti, exp]);
+            }
+        }
+        await logAudit('LOGOUT', req.user.id, 'User manually logged out', req.ip);
+        res.json({ success: true, message: 'Logout realizado com sucesso. Sessão encerrada.' });
+    } catch (err) {
+        console.error('Logout error:', err);
+        res.status(500).json({ error: 'Erro interno ao processar logout.' });
     }
 });
 

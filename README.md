@@ -25,12 +25,15 @@ Through an iterative development and security prioritization process, the applic
 1. **Core Focus:** Removed non-essential experimental modules (like internal game hubs and tabletop RPG trackers) to strictly focus on its core HR functionality and optimize build sizes.
 2. **Production Readiness:** Configured production builds, static front-end serving via Node, and Cloudinary integration for scalable file uploads.
 3. **Advanced Security Mitigations:**
-   - **IDOR Patched:** Shift expectations and personal email data are strictly siloed.
+   - **IDOR Patched:** Shift expectations, personal email data, and mail access are strictly siloed via a global `assertOwnership` helper.
    - **User Spoofing Prevented:** Chat and posts robustly tie back to server-side authenticated JWT tokens, ignoring spoofed payloads.
    - **Stored XSS & Arbitrary Executions Blocked:** Implemented strict MIME-type whitelisting mapped to secure disk extensions (`.png`, `.webp`, `.jpg`), and patched internal DOMPurify type-juggling bypasses via robust string constraints.
-   - **Rate Limiting:** Guarded authentication routes against brute-force attacks via `express-rate-limit`.
+   - **Rate Limiting & Account Lockouts:** Guarded authentication routes against brute-force attacks via `express-rate-limit` and temporary 15-minute account lockouts after 5 failed attempts.
+   - **Authenticated Encryption (AEAD):** Upgraded 2FA (TOTP) secret encryption from `AES-256-CBC` to **`AES-256-GCM`** to ensure both confidentiality and strict data integrity.
+   - **Global Session Revocation (The "Kill-Switch"):** Implemented explicit JWT denylisting (`jti`) upon logout and global session invalidation capabilities for compromised accounts.
 
 ## Latest Additions
+- **Access Governance Dashboard (HR):** Visual management of ephemeral (24-hour) HR Invite tokens and instant session revocation tools to safeguard the platform.
 - **ReceiptsOS (Sales & Merchandising):** A robust PDF Receipt Builder with dynamic calculations (taxes, subtotals), time-tracking, and secure auto-saving functionality. History viewer is strictly restricted by HR hierarchy.
 - **Invoice Price Calculator (Sales):** A dedicated tool for the sales team to compute markups, taxes, and final selling prices.
 - **Advanced HR Hierarchy:** Introduced the `Assistente de RH` (HR Assistant) role with secure code validation, bridging the gap between employees and the HR Manager.

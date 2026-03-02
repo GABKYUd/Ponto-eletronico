@@ -186,6 +186,27 @@ router.post('/hr/invite', authenticateHR, async (req, res) => {
     }
 });
 
+// API: List Generate HR Invites (HR Only)
+router.get('/hr/invites', authenticateHR, async (req, res) => {
+    try {
+        const invites = await all("SELECT id, expires_at, used FROM hr_invites ORDER BY expires_at DESC");
+        res.json(invites);
+    } catch (err) {
+        res.status(500).json({ error: 'Falha ao buscar convites.' });
+    }
+});
+
+// API: Revoke Specific HR Invite (HR Only)
+router.put('/hr/invites/:id/revoke', authenticateHR, async (req, res) => {
+    try {
+        await run("UPDATE hr_invites SET used = 1 WHERE id = ?", [req.params.id]);
+        await logAudit('HR_INVITE_REVOKED', req.user.id, `Invite ${req.params.id} manually revoked`, req.ip);
+        res.json({ success: true, message: 'Convite revogado com sucesso.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Falha ao revogar convite.' });
+    }
+});
+
 // Create Mail (HR Only)
 router.post('/mails', authenticateHR, async (req, res) => {
     const { recipientId, subject, content, type, bonusAmount, meetingTime } = req.body;
@@ -283,6 +304,18 @@ router.put('/users/:id/shift', authenticateHR, async (req, res) => {
         res.json({ success: true, message: 'Turno atualizado com sucesso.' });
     } catch (err) {
         res.status(500).json({ error: 'Falha ao atualizar limites de turno.' });
+    }
+});
+
+// API: Kill-Switch (Revoke All Active Sessions for User)
+router.post('/users/:id/revoke-sessions', authenticateHR, async (req, res) => {
+    try {
+        const now = new Date().toISOString();
+        await run("UPDATE users SET session_valid_after = ? WHERE id = ?", [now, req.params.id]);
+        await logAudit('USER_SESSIONS_REVOKED', req.user.id, `Revoked all active tokens for ${req.params.id}`, req.ip);
+        res.json({ success: true, message: 'Todas as sessões do usuário foram instantaneamente revogadas.' });
+    } catch (err) {
+        res.status(500).json({ error: 'Falha ao revogar sessões do usuário.' });
     }
 });
 

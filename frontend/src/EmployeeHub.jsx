@@ -15,6 +15,20 @@ function EmployeeHub() {
     const [socketAlert, setSocketAlert] = useState(null);
     const navigate = useNavigate();
 
+    const handleLogout = async () => {
+        const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
+        if (token) {
+            try {
+                await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/auth/logout`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+            } catch (err) { console.error("Logout dispatch failed", err); }
+        }
+        localStorage.clear();
+        navigate('/');
+    };
+
     // A simple synthesized double beep using Web Audio API
     const playBreakAudio = () => {
         try {
@@ -206,7 +220,7 @@ function EmployeeHub() {
     };
 
     if (!user) return <div className="app-container">Carregando...</div>;
-    if (user.error) return <div className="app-container" style={{ color: 'red' }}><b>Erro ao carregar usuário:</b> {user.text}<br /><button className="btn" onClick={() => { localStorage.removeItem('employeeId'); navigate('/'); }}>Voltar ao Login</button></div>;
+    if (user.error) return <div className="app-container" style={{ color: 'red' }}><b>Erro ao carregar usuário:</b> {user.text}<br /><button className="btn" onClick={handleLogout}>Voltar ao Login</button></div>;
 
     return (
         <div className="app-container" style={{ alignItems: 'flex-start', paddingTop: '2rem' }}>
@@ -227,7 +241,7 @@ function EmployeeHub() {
                         Bem-vindo(a) de volta,<br />
                         <span style={{ color: '#bb86fc' }}>{user.name}</span>
                     </h1>
-                    <button onClick={() => { localStorage.removeItem('employeeId'); navigate('/'); }} className="btn" style={{ background: '#333' }}>Sair</button>
+                    <button onClick={handleLogout} className="btn" style={{ background: '#333' }}>Sair</button>
                 </div>
 
                 {/* Main Grid */}

@@ -107,7 +107,8 @@ function initializeSchema() {
             pfp TEXT,
             shift_expectation INTEGER DEFAULT 8,
             failed_login_attempts INTEGER DEFAULT 0,
-            locked_until TEXT
+            locked_until TEXT,
+            session_valid_after TEXT
         )`,
         `CREATE TABLE IF NOT EXISTS punches (
             id ${idType},
@@ -190,6 +191,10 @@ function initializeSchema() {
             token_hash TEXT NOT NULL,
             expires_at TEXT NOT NULL,
             used INTEGER DEFAULT 0
+        )`,
+        `CREATE TABLE IF NOT EXISTS revoked_tokens (
+            jti TEXT PRIMARY KEY,
+            expires_at INTEGER NOT NULL
         )`
     ];
 
@@ -206,6 +211,7 @@ function initializeSchema() {
                 db.run("ALTER TABLE users ADD COLUMN shift_expectation INTEGER DEFAULT 8", () => { });
                 db.run("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0", () => { });
                 db.run("ALTER TABLE users ADD COLUMN locked_until TEXT", () => { });
+                db.run("ALTER TABLE users ADD COLUMN session_valid_after TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN recipient_id TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'", () => { });
             } else {
@@ -218,6 +224,7 @@ function initializeSchema() {
                     "ALTER TABLE users ADD COLUMN shift_expectation INTEGER DEFAULT 8",
                     "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
                     "ALTER TABLE users ADD COLUMN locked_until TEXT",
+                    "ALTER TABLE users ADD COLUMN session_valid_after TEXT",
                     "ALTER TABLE messages ADD COLUMN recipient_id TEXT",
                     "ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'"
                 ];
