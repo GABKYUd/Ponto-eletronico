@@ -123,8 +123,12 @@ router.post('/login', authLimiter, async (req, res) => {
             if (!user.two_factor_secret) {
                 return res.status(400).json({ success: false, error: '2FA não configurado para este usuário.' });
             }
-
-            const decryptedSecret = decrypt(user.two_factor_secret);
+            let decryptedSecret;
+            try {
+                decryptedSecret = decrypt(user.two_factor_secret);
+            } catch (err) {
+                return res.status(403).json({ success: false, error: 'Erro de integridade no 2FA. O segredo foi adulterado.' });
+            }
 
             authenticated = speakeasy.totp.verify({
                 secret: decryptedSecret,
@@ -201,8 +205,12 @@ router.get('/2fa/qr/:userId', authenticateUser, async (req, res) => {
     try {
         const user = await get("SELECT two_factor_secret FROM users WHERE id = ?", [userId]);
         if (!user || !user.two_factor_secret) return res.status(404).json({ error: 'Segredo não encontrado' });
-
-        const decryptedSecret = decrypt(user.two_factor_secret);
+        let decryptedSecret;
+        try {
+            decryptedSecret = decrypt(user.two_factor_secret);
+        } catch (err) {
+            return res.status(403).json({ error: 'Erro de integridade no 2FA. O segredo foi adulterado.' });
+        }
         const safeId = userId.replace(/\s+/g, '_');
         const otpauth_url = `otpauth://totp/PontoEletronico-${safeId}?secret=${decryptedSecret}`;
 
