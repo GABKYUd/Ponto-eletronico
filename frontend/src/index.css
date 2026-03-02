@@ -17,6 +17,30 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* --- Custom Elegance Scrollbar --- */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-color);
+  border-left: 1px solid var(--border-color);
+}
+
+::-webkit-scrollbar-thumb {
+  background: #444;
+  border-radius: 5px;
+  border: 2px solid var(--bg-color);
+  /* Adds a nice "padded" look */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
+/* --------------------------------- */
+
 .app-container {
   display: flex;
   justify-content: center;
