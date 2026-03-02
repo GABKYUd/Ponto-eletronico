@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt'); // Required for change-password
 const rateLimit = require('express-rate-limit');
 const userService = require('../users');
-const { get, run } = require('../database');
+const { get, run, logAudit } = require('../database');
 const { authenticateUser, JWT_SECRET } = require('../auth');
 
 const router = express.Router();
@@ -59,6 +59,7 @@ router.post('/register', authLimiter, async (req, res) => {
         const success = await userService.createUser(newUser);
 
         if (success) {
+            await logAudit('USER_REGISTERED', id, `Role: ${role}, Email: ${email}`, req.ip);
             qrcode.toDataURL(secret.otpauth_url, (err, data_url) => {
                 if (err) {
                     console.error('QR Generate Error:', err);
@@ -105,8 +106,10 @@ router.post('/login', authLimiter, async (req, res) => {
 
         if (authenticated) {
             const token = jwt.sign({ id, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
+            await logAudit('LOGIN_SUCCESS', id, 'Successful login', req.ip);
             res.json({ success: true, token, userId: id, role: user.role });
         } else {
+            await logAudit('LOGIN_FAILED', id, 'Invalid credentials', req.ip);
             res.status(401).json({ success: false, error: 'Credenciais Inválidas' });
         }
     } catch (err) {
@@ -130,6 +133,7 @@ router.post('/change-password', authenticateUser, async (req, res) => {
         const hash = await bcrypt.hash(newPassword, saltRounds);
 
         await run("UPDATE users SET password = ? WHERE id = ?", [hash, userId]);
+        await logAudit('PASSWORD_CHANGED', userId, 'Password successfully altered', req.ip);
 
         res.json({ success: true, message: 'Senha atualizada' });
     } catch (error) {

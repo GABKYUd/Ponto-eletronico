@@ -166,6 +166,14 @@ function initializeSchema() {
             data TEXT NOT NULL,
             timestamp TEXT NOT NULL,
             FOREIGN KEY(user_id) REFERENCES users(id)
+        )`,
+        `CREATE TABLE IF NOT EXISTS audit_logs (
+            id ${idType},
+            action_type TEXT NOT NULL,
+            user_id TEXT,
+            description TEXT,
+            ip_address TEXT,
+            timestamp TEXT NOT NULL
         )`
     ];
 
@@ -207,4 +215,14 @@ function initializeSchema() {
     executeQueries();
 }
 
-module.exports = { db, pgPool, run, get, all, isPostgres };
+const logAudit = async (action_type, user_id, description, ip_address) => {
+    try {
+        const timestamp = new Date().toISOString();
+        const sql = `INSERT INTO audit_logs (action_type, user_id, description, ip_address, timestamp) VALUES (?, ?, ?, ?, ?)`;
+        await run(sql, [action_type, user_id, description, ip_address, timestamp]);
+    } catch (err) {
+        console.error("Failed to write audit log:", err);
+    }
+};
+
+module.exports = { db, pgPool, run, get, all, isPostgres, logAudit };

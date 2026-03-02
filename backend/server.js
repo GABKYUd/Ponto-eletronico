@@ -137,6 +137,8 @@ app.get('/api/motd', (req, res) => {
 // Create HTTP Server
 const http = require('http');
 const { Server } = require('socket.io');
+const jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_production_key_default';
 
 const server = http.createServer(app);
 
@@ -153,14 +155,32 @@ const io = new Server(server, {
 // Expose io to the routes so they can emit events
 app.set('io', io);
 
-io.on('connection', (socket) => {
-    console.log('New client connected via WebSocket:', socket.id);
+// WebSocket Authentication Middleware (JWT)
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) return next(new Error('Authentication Error: Token missing'));
 
-    // Optional: Keep track of active users, read receipts, etc.
-    // Store user id on socket when they authenticate/connect
+    try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        socket.userId = decoded.id;
+        socket.userRole = decoded.role;
+        next();
+    } catch (err) {
+        next(new Error('Authentication Error: Invalid token'));
+    }
+});
+
+io.on('connection', (socket) => {
+    console.log('New authenticated client connected via WebSocket:', socket.id, 'User:', socket.userId);
+
+    // Optional: Log socket registration for presence if needed
     socket.on('register_user', (userId) => {
-        socket.userId = userId;
-        console.log(`Socket ${socket.id} registered for user ${userId}`);
+        // Enforce the userId matches the JWT token
+        if (userId !== socket.userId) {
+            console.warn(`WebSocket ID Spoof Attempt: Client requested ${userId} but holds token for ${socket.userId}`);
+            return socket.disconnect();
+        }
+        console.log(`Socket ${socket.id} active for user ${socket.userId}`);
     });
 
     socket.on('disconnect', () => {

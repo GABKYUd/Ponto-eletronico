@@ -119,7 +119,10 @@ function EmployeeHub() {
         fetchMails();
 
         // WebSocket Setup
-        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+        const wsToken = localStorage.getItem('hrToken');
+        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
+            auth: { token: wsToken }
+        });
         newSocket.on('connect', () => {
             newSocket.emit('register_user', storedId);
         });

@@ -50,7 +50,10 @@ function Chat() {
     useEffect(() => {
         if (!currentUserId) return;
 
-        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+        const token = localStorage.getItem('hrToken');
+        const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
+            auth: { token }
+        });
 
         newSocket.on('new_message', (msg) => {
             setMessages(prev => {
