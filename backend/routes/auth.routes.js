@@ -1,12 +1,14 @@
 const express = require('express');
+const crypto = require('crypto');
 const speakeasy = require('speakeasy');
 const qrcode = require('qrcode');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt'); // Required for change-password
 const rateLimit = require('express-rate-limit');
 const userService = require('../users');
-const { get, run, logAudit } = require('../database');
+const { get, run, all, logAudit } = require('../database');
 const { authenticateUser, JWT_SECRET } = require('../auth');
+const { encrypt, decrypt } = require('../cryptoUtils');
 
 const router = express.Router();
 
@@ -39,8 +41,26 @@ router.post('/register', authLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Campos obrigatórios ausentes (Nome, ID, Cargo, Senha, Email).' });
     }
 
-    if (['HR', 'HRAssistant'].includes(role) && specialCode !== 'KYUUK') {
-        return res.status(403).json({ error: 'Código Especial inválido para registro de RH.' });
+    if (['HR', 'HRAssistant'].includes(role)) {
+        if (!specialCode) {
+            return res.status(403).json({ error: 'Código de convite obrigatório para registro de RH.' });
+        }
+        // Verify Token
+        const tokenHash = crypto.createHash('sha256').update(specialCode).digest('hex');
+        const invite = await get("SELECT * FROM hr_invites WHERE token_hash = ? AND used = 0", [tokenHash]);
+
+        if (!invite) {
+            return res.status(403).json({ error: 'Código de convite inválido ou já utilizado.' });
+        }
+
+        const now = new Date();
+        const expiresAt = new Date(invite.expires_at);
+        if (now > expiresAt) {
+            return res.status(403).json({ error: 'Código de convite expirado.' });
+        }
+
+        // Mark Used
+        await run("UPDATE hr_invites SET used = 1 WHERE id = ?", [invite.id]);
     }
 
     try {
@@ -53,7 +73,7 @@ router.post('/register', authLimiter, async (req, res) => {
             Role: role,
             Password: password,
             Email: sanitize(email),
-            TwoFactorSecret: secret.base32
+            TwoFactorSecret: encrypt(secret.base32)
         };
 
         const success = await userService.createUser(newUser);
@@ -81,9 +101,18 @@ router.post('/login', authLimiter, async (req, res) => {
     const { id, password, code } = req.body;
 
     try {
-        const user = await userService.findUserById(id);
+        const user = await get("SELECT * FROM users WHERE id = ?", [id]);
         if (!user) {
             return res.status(401).json({ success: false, error: 'ID Inválido' });
+        }
+
+        // Account Lockout Check
+        if (user.locked_until) {
+            const lockedUntilDate = new Date(user.locked_until);
+            if (new Date() < lockedUntilDate) {
+                await logAudit('LOGIN_FAILED_LOCKED', id, 'Account locked due to brute force', req.ip);
+                return res.status(403).json({ success: false, error: 'Sua conta está temporariamente bloqueada. Tente novamente mais tarde.' });
+            }
         }
 
         let authenticated = false;
@@ -94,8 +123,11 @@ router.post('/login', authLimiter, async (req, res) => {
             if (!user.two_factor_secret) {
                 return res.status(400).json({ success: false, error: '2FA não configurado para este usuário.' });
             }
+
+            const decryptedSecret = decrypt(user.two_factor_secret);
+
             authenticated = speakeasy.totp.verify({
-                secret: user.two_factor_secret,
+                secret: decryptedSecret,
                 encoding: 'base32',
                 token: code,
                 window: 1 // Allow 30sec slack
@@ -107,10 +139,27 @@ router.post('/login', authLimiter, async (req, res) => {
         if (authenticated) {
             const token = jwt.sign({ id, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
             await logAudit('LOGIN_SUCCESS', id, 'Successful login', req.ip);
+
+            // Reset Failed Attempts
+            if (user.failed_login_attempts > 0 || user.locked_until) {
+                await run("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?", [id]);
+            }
+
             res.json({ success: true, token, userId: id, role: user.role });
         } else {
-            await logAudit('LOGIN_FAILED', id, 'Invalid credentials', req.ip);
-            res.status(401).json({ success: false, error: 'Credenciais Inválidas' });
+            // Increment Failed Attempts and Check Lockout
+            const attempts = (user.failed_login_attempts || 0) + 1;
+            if (attempts >= 5) {
+                const clockUntil = new Date();
+                clockUntil.setMinutes(clockUntil.getMinutes() + 15);
+                await run("UPDATE users SET failed_login_attempts = ?, locked_until = ? WHERE id = ?", [attempts, clockUntil.toISOString(), id]);
+                await logAudit('ACCOUNT_LOCKED', id, `Account locked for 15M after ${attempts} attempts`, req.ip);
+                res.status(403).json({ success: false, error: 'Muitas tentativas falhas. Conta bloqueada por 15 minutos.' });
+            } else {
+                await run("UPDATE users SET failed_login_attempts = ? WHERE id = ?", [attempts, id]);
+                await logAudit('LOGIN_FAILED', id, `Invalid credentials (Attempt ${attempts}/5)`, req.ip);
+                res.status(401).json({ success: false, error: 'Credenciais Inválidas' });
+            }
         }
     } catch (err) {
         console.error(err);
@@ -153,8 +202,9 @@ router.get('/2fa/qr/:userId', authenticateUser, async (req, res) => {
         const user = await get("SELECT two_factor_secret FROM users WHERE id = ?", [userId]);
         if (!user || !user.two_factor_secret) return res.status(404).json({ error: 'Segredo não encontrado' });
 
+        const decryptedSecret = decrypt(user.two_factor_secret);
         const safeId = userId.replace(/\s+/g, '_');
-        const otpauth_url = `otpauth://totp/PontoEletronico-${safeId}?secret=${user.two_factor_secret}`;
+        const otpauth_url = `otpauth://totp/PontoEletronico-${safeId}?secret=${decryptedSecret}`;
 
         qrcode.toDataURL(otpauth_url, (err, data_url) => {
             if (err) return res.status(500).json({ error: 'Falha na geração do QR' });

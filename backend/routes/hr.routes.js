@@ -1,8 +1,9 @@
 const express = require('express');
+const crypto = require('crypto');
 const { stringify } = require('csv-stringify/sync');
-const { authenticateUser, authenticateHR } = require('../auth');
+const { authenticateUser, authenticateHR, assertOwnership } = require('../auth');
 const userService = require('../users');
-const { run, all, get } = require('../database');
+const { run, all, get, logAudit } = require('../database');
 
 // Helper: Sanitize User Inputs against XSS
 const createDOMPurify = require('dompurify');
@@ -160,6 +161,31 @@ router.get('/users', authenticateUser, async (req, res) => {
     }
 });
 
+// API: Generate HR Invite Token
+router.post('/hr/invite', authenticateHR, async (req, res) => {
+    // Only HR Managers (not Assistants) should ideally generate tokens, but we will allow the role as per current schema scope unless otherwise limited.
+    if (req.user.role !== 'HR') {
+        await logAudit('403_FORBIDDEN', req.user.id, 'HRAssistant attempted to generate invite token', req.ip);
+        return res.status(403).json({ error: 'Apenas Gerentes de RH (HR) podem gerar códigos de convite.' });
+    }
+
+    try {
+        const rawToken = crypto.randomBytes(8).toString('hex'); // 16 characters
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expiresAt = new Date();
+        expiresAt.setHours(expiresAt.getHours() + 24); // 24-hour expiry
+        const inviteId = crypto.randomBytes(4).toString('hex');
+
+        await run("INSERT INTO hr_invites (id, token_hash, expires_at) VALUES (?, ?, ?)", [inviteId, tokenHash, expiresAt.toISOString()]);
+        await logAudit('HR_INVITE_GENERATED', req.user.id, `Invite ${inviteId} generated`, req.ip);
+
+        res.json({ success: true, inviteToken: rawToken, expiresAt: expiresAt.toISOString() });
+    } catch (err) {
+        console.error('Invite generation failed:', err);
+        res.status(500).json({ error: 'Falha ao gerar convite.' });
+    }
+});
+
 // Create Mail (HR Only)
 router.post('/mails', authenticateHR, async (req, res) => {
     const { recipientId, subject, content, type, bonusAmount, meetingTime } = req.body;
@@ -184,9 +210,8 @@ router.post('/mails', authenticateHR, async (req, res) => {
 
 // Get User's Mails
 router.get('/mails/:userId', authenticateUser, async (req, res) => {
-    if (req.params.userId !== req.user.id && !['HR', 'HRAssistant'].includes(req.user.role)) {
-        return res.status(403).json({ error: 'Acesso negado' });
-    }
+    const isOwner = await assertOwnership(req, res, req.params.userId);
+    if (!isOwner) return;
 
     try {
         const mails = await all(`
@@ -208,8 +233,9 @@ router.put('/mails/:id/read', authenticateUser, async (req, res) => {
         const mail = await get("SELECT recipient_id FROM mails WHERE id = ?", [req.params.id]);
         if (!mail) return res.status(404).json({ error: 'Email não encontrado' });
 
-        if (mail.recipient_id && mail.recipient_id !== req.user.id && !['HR', 'HRAssistant'].includes(req.user.role)) {
-            return res.status(403).json({ error: 'Acesso negado. Este email não pertence a você.' });
+        if (mail.recipient_id) {
+            const isOwner = await assertOwnership(req, res, mail.recipient_id);
+            if (!isOwner) return;
         }
 
         if (!mail.recipient_id) {
@@ -236,6 +262,8 @@ router.get('/users/:id', authenticateUser, async (req, res) => {
 
         // Information Disclosure / IDOR fix: Hide private fields from standard employees
         if (req.user.id !== req.params.id && !['HR', 'HRAssistant'].includes(req.user.role)) {
+            // Log IDOR profiling since they are viewing basic social profile info but attempted to pull the full payload organically
+            // We won't log an IDOR attempt here for social interaction (chat window pulling basic user data), but we drop the sensitive columns.
             delete user.email;
             delete user.shift_expectation;
         }

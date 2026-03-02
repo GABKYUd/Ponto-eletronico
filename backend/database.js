@@ -105,7 +105,9 @@ function initializeSchema() {
             two_factor_secret TEXT,
             bio TEXT,
             pfp TEXT,
-            shift_expectation INTEGER DEFAULT 8
+            shift_expectation INTEGER DEFAULT 8,
+            failed_login_attempts INTEGER DEFAULT 0,
+            locked_until TEXT
         )`,
         `CREATE TABLE IF NOT EXISTS punches (
             id ${idType},
@@ -174,6 +176,20 @@ function initializeSchema() {
             description TEXT,
             ip_address TEXT,
             timestamp TEXT NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS audit_logs (
+            id ${idType},
+            action_type TEXT NOT NULL,
+            user_id TEXT,
+            description TEXT,
+            ip_address TEXT,
+            timestamp TEXT NOT NULL
+        )`,
+        `CREATE TABLE IF NOT EXISTS hr_invites (
+            id TEXT PRIMARY KEY,
+            token_hash TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            used INTEGER DEFAULT 0
         )`
     ];
 
@@ -188,6 +204,8 @@ function initializeSchema() {
                 db.run("ALTER TABLE users ADD COLUMN bio TEXT", () => { });
                 db.run("ALTER TABLE users ADD COLUMN pfp TEXT", () => { });
                 db.run("ALTER TABLE users ADD COLUMN shift_expectation INTEGER DEFAULT 8", () => { });
+                db.run("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0", () => { });
+                db.run("ALTER TABLE users ADD COLUMN locked_until TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN recipient_id TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'", () => { });
             } else {
@@ -198,6 +216,8 @@ function initializeSchema() {
                     "ALTER TABLE users ADD COLUMN bio TEXT",
                     "ALTER TABLE users ADD COLUMN pfp TEXT",
                     "ALTER TABLE users ADD COLUMN shift_expectation INTEGER DEFAULT 8",
+                    "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
+                    "ALTER TABLE users ADD COLUMN locked_until TEXT",
                     "ALTER TABLE messages ADD COLUMN recipient_id TEXT",
                     "ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'"
                 ];

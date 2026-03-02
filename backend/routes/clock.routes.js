@@ -1,5 +1,5 @@
 const express = require('express');
-const { authenticateUser } = require('../auth');
+const { authenticateUser, assertOwnership } = require('../auth');
 const userService = require('../users');
 const { run, all } = require('../database');
 
@@ -35,9 +35,8 @@ router.post('/', authenticateUser, async (req, res) => {
 router.get('/today/:employeeId', authenticateUser, async (req, res) => {
     const { employeeId } = req.params;
 
-    if (employeeId !== req.user.id && req.user.role !== 'HR') {
-        return res.status(403).json({ error: 'Acesso negado. Não é possível ver marcações de outros usuários.' });
-    }
+    const isOwner = await assertOwnership(req, res, employeeId);
+    if (!isOwner) return;
 
     const today = new Date().toISOString().split('T')[0];
     try {
