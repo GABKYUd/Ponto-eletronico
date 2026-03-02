@@ -17,12 +17,8 @@ function Profile() {
     const loggedInUserId = localStorage.getItem('userId');
     const profileId = id || loggedInUserId;
 
-    const authFetch = (url, options = {}) => {
-        const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
-        const headers = { ...options.headers };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-        return fetch(url, { ...options, headers });
-    };
+    // Rely on global window.fetch interceptor for token refresh
+    const authFetch = fetch;
 
     // Fetch Data
     useEffect(() => {

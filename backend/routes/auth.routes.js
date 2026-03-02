@@ -8,7 +8,7 @@ const bcrypt = require('bcrypt'); // Required for change-password
 const rateLimit = require('express-rate-limit');
 const userService = require('../users');
 const { get, run, all, logAudit } = require('../database');
-const { authenticateUser, JWT_SECRET } = require('../auth');
+const { authenticateUser, ACTIVE_JWT_SECRET, verifyToken } = require('../auth');
 const { encrypt, decrypt } = require('../cryptoUtils');
 
 const router = express.Router();
@@ -143,7 +143,20 @@ router.post('/login', authLimiter, async (req, res) => {
 
         if (authenticated) {
             const jti = uuidv4();
-            const token = jwt.sign({ id, role: user.role, jti }, JWT_SECRET, { expiresIn: '8h' });
+            const sessionVersion = user.session_version || 1;
+
+            const token = jwt.sign(
+                { id, role: user.role, jti, sessionVersion, type: 'access' },
+                ACTIVE_JWT_SECRET,
+                { expiresIn: '15m' }
+            );
+
+            const refreshToken = jwt.sign(
+                { id, jti, sessionVersion, type: 'refresh' },
+                ACTIVE_JWT_SECRET,
+                { expiresIn: '7d' }
+            );
+
             await logAudit('LOGIN_SUCCESS', id, 'Successful login', req.ip);
 
             // Reset Failed Attempts
@@ -151,7 +164,7 @@ router.post('/login', authLimiter, async (req, res) => {
                 await run("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?", [id]);
             }
 
-            res.json({ success: true, token, userId: id, role: user.role });
+            res.json({ success: true, token, refreshToken, userId: id, role: user.role });
         } else {
             // Increment Failed Attempts and Check Lockout
             const attempts = (user.failed_login_attempts || 0) + 1;
@@ -170,6 +183,53 @@ router.post('/login', authLimiter, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Erro no servidor' });
+    }
+});
+
+// API: Refresh Token (Mint new Access Token)
+router.post('/refresh', async (req, res) => {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ error: 'Refresh token é obrigatório.' });
+
+    try {
+        const decoded = verifyToken(refreshToken);
+
+        if (decoded.type !== 'refresh') {
+            return res.status(403).json({ error: 'Token fornecido não é um Refresh Token.' });
+        }
+
+        // Check if token's jti was explicitly revoked
+        const isRevoked = await get("SELECT * FROM revoked_tokens WHERE jti = ?", [decoded.jti]);
+        if (isRevoked) {
+            return res.status(401).json({ error: 'Refresh token revogado.' });
+        }
+
+        const user = await get("SELECT role, session_version, session_valid_after FROM users WHERE id = ?", [decoded.id]);
+        if (!user) return res.status(401).json({ error: 'Usuário não existe mais.' });
+
+        if (decoded.sessionVersion && user.session_version !== decoded.sessionVersion) {
+            return res.status(401).json({ error: 'Sessão expirou globalmente (Session Version mismatch).' });
+        }
+
+        if (user.session_valid_after) {
+            const validAfter = new Date(user.session_valid_after).getTime() / 1000;
+            if (decoded.iat < validAfter) {
+                return res.status(401).json({ error: 'Sessão terminada via Kill-Switch.' });
+            }
+        }
+
+        // Issue new Short-Lived Access Token
+        const token = jwt.sign(
+            { id: decoded.id, role: user.role, jti: decoded.jti, sessionVersion: user.session_version || 1, type: 'access' },
+            ACTIVE_JWT_SECRET,
+            { expiresIn: '15m' }
+        );
+
+        res.json({ success: true, token });
+
+    } catch (err) {
+        await logAudit('TOKEN_REFRESH_FAILED', 'UNKNOWN', `Failed refresh attempt from ${req.ip}`, req.ip);
+        res.status(401).json({ error: 'Refresh token inválido ou expirado. Faça login novamente.' });
     }
 });
 

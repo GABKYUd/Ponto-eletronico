@@ -108,7 +108,8 @@ function initializeSchema() {
             shift_expectation INTEGER DEFAULT 8,
             failed_login_attempts INTEGER DEFAULT 0,
             locked_until TEXT,
-            session_valid_after TEXT
+            session_valid_after TEXT,
+            session_version INTEGER DEFAULT 1
         )`,
         `CREATE TABLE IF NOT EXISTS punches (
             id ${idType},

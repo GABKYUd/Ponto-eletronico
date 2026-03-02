@@ -26,7 +26,15 @@ function Login() {
             const data = await response.json();
 
             if (data.success) {
-                localStorage.setItem('hrToken', data.token);
+                // Determine token key based on role compatibility (though we fallback uniformly now)
+                if (data.role === 'HR' || data.role === 'HRAssistant' || data.role === 'MasterAdmin' || data.role === 'Infra') {
+                    localStorage.setItem('hrToken', data.token);
+                } else {
+                    localStorage.setItem('token', data.token);
+                }
+                if (data.refreshToken) {
+                    localStorage.setItem('refreshToken', data.refreshToken);
+                }
                 localStorage.setItem('userId', data.userId);
                 localStorage.setItem('employeeId', data.userId); // For compatibility
                 localStorage.setItem('role', data.role);

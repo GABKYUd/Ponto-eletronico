@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import './index.css';
@@ -31,10 +32,7 @@ function Chat() {
         if (!currentUserId) { navigate('/'); return; }
 
         // Fetch current user details to get clean name
-        const token = localStorage.getItem('hrToken');
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users/${currentUserId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        })
+        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users/${currentUserId}`)
             .then(res => res.json())
             .then(data => setCurrentUserName(data.name))
             .catch(() => { });
@@ -89,10 +87,7 @@ function Chat() {
 
     const fetchUsers = async () => {
         try {
-            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
-            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/users`);
             if (res.ok) {
                 const data = await res.json();
                 // Filter out self
@@ -112,10 +107,7 @@ function Chat() {
             }
             // If General, url is just /api/chat (endpoint handles public default)
 
-            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
-            const res = await fetch(url, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const res = await fetch(url);
             if (res.ok) {
                 const data = await res.json();
                 setMessages(data);
@@ -141,12 +133,10 @@ function Chat() {
                 body.recipientId = selectedUser.id;
             }
 
-            const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
             await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/chat`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify(body)
             });
@@ -169,7 +159,7 @@ function Chat() {
 
                     <div className="sidebar-list">
                         <div
-                            className={`sidebar-item ${!selectedUser ? 'active' : ''}`}
+                            className={`sidebar-item ${!selectedUser ? 'active' : ''} `}
                             onClick={() => setSelectedUser(null)}
                         >
                             <div className="avatar global">🌎</div>
@@ -183,7 +173,7 @@ function Chat() {
                         {TEAM_CHANNELS.map(team => (
                             <div
                                 key={team.id}
-                                className={`sidebar-item ${selectedUser?.id === team.id ? 'active' : ''}`}
+                                className={`sidebar-item ${selectedUser?.id === team.id ? 'active' : ''} `}
                                 onClick={() => setSelectedUser(team)}
                             >
                                 <div className="avatar global" style={{ background: '#03dac6', color: '#000' }}>#</div>
@@ -199,7 +189,7 @@ function Chat() {
                         {users.map(u => (
                             <div
                                 key={u.id}
-                                className={`sidebar-item ${selectedUser?.id === u.id ? 'active' : ''}`}
+                                className={`sidebar-item ${selectedUser?.id === u.id ? 'active' : ''} `}
                                 onClick={() => setSelectedUser(u)}
                             >
                                 <div className="avatar">{u.name.charAt(0).toUpperCase()}</div>
@@ -231,7 +221,7 @@ function Chat() {
                         {messages.map((msg, idx) => {
                             const isMine = msg.user_id === currentUserId;
                             return (
-                                <div key={idx} className={`message-row ${isMine ? 'mine' : 'theirs'}`}>
+                                <div key={idx} className={`message - row ${isMine ? 'mine' : 'theirs'} `}>
                                     {!isMine && <div className="message-avatar" title={msg.user_name}>{msg.user_name.charAt(0).toUpperCase()}</div>}
                                     <div className="message-bubble">
                                         {!isMine && !selectedUser && <div className="msg-sender">{msg.user_name}</div>}
