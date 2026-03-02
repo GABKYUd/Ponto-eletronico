@@ -38,6 +38,8 @@ Through an iterative development and security prioritization process, the applic
 - **Invoice Price Calculator (Sales):** A dedicated tool for the sales team to compute markups, taxes, and final selling prices.
 - **Advanced HR Hierarchy:** Introduced the `Assistente de RH` (HR Assistant) role with secure code validation, bridging the gap between employees and the HR Manager.
 - **Smart Auto-Breaks:** Non-intrusive WebSocket alerts that notify employees to take a break after 1 hour of continuous work, rather than forcefully manipulating database punching records.
+- **Architectural Refactoring:** Successfully modularized the backend architecture by decoupling file upload routes, WebSocket initialization, and background cron schedulers out of the main `server.js` loop.
+- **Unified Authentication Pipeline:** Streamlined the frontend's JWT resolution strategy across all components (Inbox, Chat, Profile) to natively support both HR Administrative tokens and ephemeral Employee session tokens.
 
 ## How to Run Locally
 

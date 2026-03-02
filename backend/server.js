@@ -3,8 +3,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
-const multer = require('multer');
-const { authenticateUser } = require('./auth');
 require('dotenv').config();
 
 const app = express();
@@ -50,70 +48,13 @@ if (!fs.existsSync(uploadsDir)) {
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// Cloudinary Setup
-const cloudinary = require('cloudinary').v2;
-const cloudinaryStorage = require('multer-storage-cloudinary');
-
-if (process.env.CLOUDINARY_URL) {
-    // Cloudinary automatically configures via the CLOUDINARY_URL env var
-    console.log('Using Cloudinary for file uploads.');
-} else {
-    console.log('No CLOUDINARY_URL found. Falling back to local disk storage.');
-}
-
-// Multer Storage Configuration (File Upload)
-const mimeToExt = {
-    'image/jpeg': '.jpg',
-    'image/png': '.png',
-    'image/webp': '.webp'
-};
-
-const localStorage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => {
-        const safeExt = mimeToExt[file.mimetype] || '.bin'; // Hard fallback
-        cb(null, Date.now() + safeExt);
-    }
-});
-
-const cloudStorage = cloudinaryStorage({
-    cloudinary: cloudinary,
-    folder: 'ponto-uploads',
-    allowedFormats: ['jpg', 'png', 'webp', 'jpeg'],
-});
-
-const fileFilter = (req, file, cb) => {
-    if (['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Invalid file type. Only JPG, PNG, and WEBP are allowed.'), false);
-    }
-};
-const upload = multer({
-    storage: process.env.CLOUDINARY_URL ? cloudStorage : localStorage,
-    fileFilter,
-    limits: { fileSize: 5 * 1024 * 1024 }
-});
-
-// File Upload Route
-app.post('/api/upload', authenticateUser, (req, res) => {
-    upload.single('file')(req, res, (err) => {
-        if (err) return res.status(400).json({ error: err.message });
-        if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
-
-        // Cloudinary puts the URL in req.file.path, local disk puts it in filename
-        const imageUrl = process.env.CLOUDINARY_URL ? req.file.path : `http://localhost:3001/uploads/${req.file.filename}`;
-
-        res.json({ success: true, imageUrl: imageUrl });
-    });
-});
-
 // Import Modular Routes
 const authRoutes = require('./routes/auth.routes');
 const clockRoutes = require('./routes/clock.routes');
 const hrRoutes = require('./routes/hr.routes');
 const socialRoutes = require('./routes/social.routes');
 const receiptRoutes = require('./routes/receipt.routes');
+const uploadRoutes = require('./routes/upload.routes');
 
 // Apply Routes
 app.use('/api/auth', authRoutes);
@@ -121,6 +62,7 @@ app.use('/api/clock', clockRoutes);
 app.use('/api', hrRoutes); // Contains /users, /mails, /reports
 app.use('/api', socialRoutes); // Contains /chat, /posts, /profile, /certifications
 app.use('/api/receipts', receiptRoutes);
+app.use('/api/upload', uploadRoutes);
 
 // API: Get Message of the Day (MOTD)
 app.get('/api/motd', (req, res) => {
@@ -136,110 +78,15 @@ app.get('/api/motd', (req, res) => {
 
 // Create HTTP Server
 const http = require('http');
-const { Server } = require('socket.io');
-const jwt = require('jsonwebtoken');
-const JWT_SECRET = process.env.JWT_SECRET || 'super_secret_production_key_default';
-
 const server = http.createServer(app);
 
-// Initialize Socket.io
-// Initialize Socket.io
-// In production, we allow the same origin, locally we allow Vite's 5173
-const io = new Server(server, {
-    cors: {
-        origin: process.env.NODE_ENV === 'production' ? false : "http://localhost:5173",
-        methods: ["GET", "POST"]
-    }
-});
+// Initialize WebSockets
+const { initWebSockets } = require('./websockets');
+const io = initWebSockets(server, app);
 
-// Expose io to the routes so they can emit events
-app.set('io', io);
-
-// WebSocket Authentication Middleware (JWT)
-io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
-    if (!token) return next(new Error('Authentication Error: Token missing'));
-
-    try {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        socket.userId = decoded.id;
-        socket.userRole = decoded.role;
-        next();
-    } catch (err) {
-        next(new Error('Authentication Error: Invalid token'));
-    }
-});
-
-io.on('connection', (socket) => {
-    console.log('New authenticated client connected via WebSocket:', socket.id, 'User:', socket.userId);
-
-    // Optional: Log socket registration for presence if needed
-    socket.on('register_user', (userId) => {
-        // Enforce the userId matches the JWT token
-        if (userId !== socket.userId) {
-            console.warn(`WebSocket ID Spoof Attempt: Client requested ${userId} but holds token for ${socket.userId}`);
-            return socket.disconnect();
-        }
-        console.log(`Socket ${socket.id} active for user ${socket.userId}`);
-    });
-
-    socket.on('disconnect', () => {
-        console.log('Client disconnected:', socket.id);
-    });
-});
-
-// Auto-Break and Alert Scheduler
-const { run, all } = require('./database');
-const userService = require('./users');
-
-setInterval(async () => {
-    try {
-        // Run every minute. Get punches for today to determine state.
-        const today = new Date().toISOString().split('T')[0];
-        const punches = await all("SELECT * FROM punches WHERE timestamp LIKE ? ORDER BY timestamp ASC", [`${today}%`]);
-        const users = await userService.getAllUsers();
-
-        users.forEach(async (user) => {
-            const userPunches = punches.filter(p => p.user_id === user.id);
-            if (userPunches.length === 0) return;
-
-            const lastPunch = userPunches[userPunches.length - 1];
-            const now = new Date();
-            const lastPunchTime = new Date(lastPunch.timestamp);
-            const durationMins = (now - lastPunchTime) / (1000 * 60);
-
-            // 1. Auto-assign break after 1 hour (60 mins) of work
-            if (lastPunch.type === 'IN' || lastPunch.type === 'BREAK_END') {
-                if (durationMins >= 60) {
-                    console.log(`Alerting user ${user.id} (${user.name}) to take a break`);
-
-                    // Notify user via WebSocket
-                    io.sockets.sockets.forEach(s => {
-                        if (s.userId === user.id) {
-                            s.emit('auto_break_started', { message: 'Você já trabalhou por muito tempo. Por favor, lembre-se de registrar o início da sua pausa no sistema.' });
-                        }
-                    });
-                }
-            }
-
-            // 2. Alert after 30 mins of break time
-            if (lastPunch.type === 'BREAK_START' && durationMins >= 30) {
-                // To avoid spamming every minute after 30 mins, we can check if it's exactly 30 or we can just send the alert.
-                // Let's just send it if it's between 30 and 31 minutes to trigger once.
-                if (durationMins >= 30 && durationMins < 31) {
-                    console.log(`Alerting user ${user.id} (${user.name}) that break is over.`);
-                    io.sockets.sockets.forEach(s => {
-                        if (s.userId === user.id) {
-                            s.emit('break_over_alert', { message: 'Atenção: Seu intervalo de 30 minutos terminou. Lembre-se de bater o ponto de volta!' });
-                        }
-                    });
-                }
-            }
-        });
-    } catch (err) {
-        console.error('Error in Auto-Break scheduler:', err);
-    }
-}, 60 * 1000); // Check every 60 seconds
+// Initialize Auto-Break and Alert Scheduler
+const { initScheduler } = require('./scripts/scheduler');
+initScheduler(io);
 
 // --- Production Ready Static File Serving ---
 // In production, serve the compiled React SPA
