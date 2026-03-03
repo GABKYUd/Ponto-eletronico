@@ -38,7 +38,7 @@ Through an iterative development and security prioritization process, the applic
   - **HR Command Center:** Transformed the reporting module into a comprehensive Global Metrics control panel. Includes a real-time WebSocket-powered presence indicator (Online/Break/Offline) and an anomaly resolution queue.
   - **Security Operations Center (SOC):** Upgraded the IT Security view into a Visual Threat Matrix, featuring interactive Recharts (Safe Events vs Threats, IPs) and robust deep-filtering capabilities for incident response.
 
-- **L3 Enterprise Security :**
+- Security Updates:**
   - **Zero-Trust RBAC:** Complete overhaul separating strictly defined functions across HR, Infraestructura (TI), and Analista de TI roles.
   - **Dynamic Session Control (The "Kill-Switch"):** Integrated `sessionVersion` validation directly against the active database, allowing leadership to instantly purge active sessions of compromised accounts globally.
   - **Dual-Token Architecture:** Replaced long-lived sessions with 15-minute Access Tokens and secure, rotating 7-day Refresh Tokens.
