@@ -33,7 +33,7 @@ Through an iterative development and security prioritization process, the applic
    - **Global Session Revocation (The "Kill-Switch"):** Implemented explicit JWT denylisting (`jti`) upon logout and global session invalidation capabilities for compromised accounts.
 
 ## Latest Additions
-- **L3 Enterprise Security (Phase 7):**
+- **Security Hardening:**
   - **Zero-Trust RBAC:** Complete overhaul separating strictly defined functions across HR, Infraestructura (TI), and Analista de TI roles.
   - **Dynamic Session Control (The "Kill-Switch"):** Integrated `sessionVersion` validation directly against the active database, allowing leadership to instantly purge active sessions of compromised accounts globally.
   - **Dual-Token Architecture:** Replaced long-lived sessions with 15-minute Access Tokens and secure, rotating 7-day Refresh Tokens.
@@ -42,7 +42,7 @@ Through an iterative development and security prioritization process, the applic
   - **Anomaly Detection:** Silent user profiling capturing shifts in IP addresses and User-Agents during login phases to flag stolen credentials.
   - **DoS Mitigation:** Implemented aggressive rate-limiting protocols on WebSocket connections at the `socket.io` layer to prevent message flooding.
 
-- **Backend Modularization (Phase 6):**
+- **Backend Modularization:**
   - Refactored `server.js` from a monolithic entrypoint into a streamlined application bootstrap file.
   - Extracted core services into isolated modules: `upload.routes.js`, `websockets.js`, and cron jobs inside `scripts/scheduler.js`.
   - Frontend components were heavily split, abstracting logical units like `SecurityDashboard.jsx`, `HRMailModule.jsx`, and `WeeklyReportModal.jsx` away from the massive HR dashboard root.
