@@ -1,7 +1,31 @@
 const { all } = require('../database');
 const userService = require('../users');
+const fs = require('fs');
+const path = require('path');
 
 function initScheduler(io) {
+    // 1. Daily DB Backup Job (SQLite Draft)
+    setInterval(() => {
+        if (process.env.DATABASE_URL) return; // Skip if using PostgreSQL
+
+        try {
+            const dbPath = path.join(__dirname, '../../ponto.db');
+            const backupDir = path.join(__dirname, '../backups');
+            if (!fs.existsSync(backupDir)) fs.mkdirSync(backupDir, { recursive: true });
+
+            const dateStr = new Date().toISOString().split('T')[0];
+            const backupPath = path.join(backupDir, `ponto_backup_${dateStr}.db`);
+
+            if (fs.existsSync(dbPath) && !fs.existsSync(backupPath)) {
+                fs.copyFileSync(dbPath, backupPath);
+                console.log(`[Database Backup] SQLite successfully backed up to ${backupPath}`);
+            }
+        } catch (err) {
+            console.error('[Database Backup] Failed:', err);
+        }
+    }, 24 * 60 * 60 * 1000); // Check once a day
+
+    // 2. Auto-Break and Alert Scheduler
     setInterval(async () => {
         try {
             const today = new Date().toISOString().split('T')[0];

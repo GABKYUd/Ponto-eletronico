@@ -26,8 +26,31 @@ function initWebSockets(server, app) {
         }
     });
 
+    const rateLimitMap = new Map();
+
     io.on('connection', (socket) => {
         console.log('New authenticated client connected via WebSocket:', socket.id, 'User:', socket.userId);
+
+        socket.use((packet, next) => {
+            const now = Date.now();
+            let limitInfo = rateLimitMap.get(socket.id);
+            if (!limitInfo) {
+                limitInfo = { count: 1, windowStart: now };
+                rateLimitMap.set(socket.id, limitInfo);
+                return next();
+            }
+            if (now - limitInfo.windowStart > 1000) {
+                limitInfo.count = 1;
+                limitInfo.windowStart = now;
+                return next();
+            }
+            limitInfo.count++;
+            if (limitInfo.count > 10) {
+                console.warn(`WebSocket Rate Limit Exceeded: User ${socket.userId} (${socket.id}) sent ${limitInfo.count} msgs/sec`);
+                return next(new Error('Rate limit exceeded. Disconnecting.'));
+            }
+            next();
+        });
 
         socket.on('register_user', (userId) => {
             if (userId !== socket.userId) {
@@ -38,6 +61,7 @@ function initWebSockets(server, app) {
         });
 
         socket.on('disconnect', () => {
+            rateLimitMap.delete(socket.id);
             console.log('Client disconnected:', socket.id);
         });
     });

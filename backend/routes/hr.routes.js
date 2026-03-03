@@ -1,7 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { stringify } = require('csv-stringify/sync');
-const { authenticateUser, authenticateHR, assertOwnership } = require('../auth');
+const { authenticateUser, authorize, assertOwnership } = require('../auth');
 const userService = require('../users');
 const { run, all, get, logAudit } = require('../database');
 
@@ -102,7 +102,7 @@ const analyzeRecords = (records, users = []) => {
 };
 
 // API: Get Reliability Report (Protected)
-router.get('/reports', authenticateHR, async (req, res) => {
+router.get('/reports', authenticateUser, authorize('VIEW_REPORTS'), async (req, res) => {
     try {
         const records = await all("SELECT * FROM punches");
         const users = await userService.getAllUsers();
@@ -115,7 +115,7 @@ router.get('/reports', authenticateHR, async (req, res) => {
 });
 
 // API: Export for PowerBI (Protected)
-router.get('/export/powerbi', authenticateHR, async (req, res) => {
+router.get('/export/powerbi', authenticateUser, authorize('VIEW_REPORTS'), async (req, res) => {
     try {
         const records = await all("SELECT * FROM punches ORDER BY user_id, timestamp");
         const users = await userService.getAllUsers();
@@ -162,12 +162,7 @@ router.get('/users', authenticateUser, async (req, res) => {
 });
 
 // API: Generate HR Invite Token
-router.post('/hr/invite', authenticateHR, async (req, res) => {
-    // Only HR Managers (not Assistants) should ideally generate tokens, but we will allow the role as per current schema scope unless otherwise limited.
-    if (req.user.role !== 'HR') {
-        await logAudit('403_FORBIDDEN', req.user.id, 'HRAssistant attempted to generate invite token', req.ip);
-        return res.status(403).json({ error: 'Apenas Gerentes de RH (HR) podem gerar códigos de convite.' });
-    }
+router.post('/hr/invite', authenticateUser, authorize('MANAGE_INVITES'), async (req, res) => {
 
     try {
         const rawToken = crypto.randomBytes(8).toString('hex'); // 16 characters
@@ -187,7 +182,7 @@ router.post('/hr/invite', authenticateHR, async (req, res) => {
 });
 
 // API: List Generate HR Invites (HR Only)
-router.get('/hr/invites', authenticateHR, async (req, res) => {
+router.get('/hr/invites', authenticateUser, authorize('MANAGE_INVITES'), async (req, res) => {
     try {
         const invites = await all("SELECT id, expires_at, used FROM hr_invites ORDER BY expires_at DESC");
         res.json(invites);
@@ -197,7 +192,7 @@ router.get('/hr/invites', authenticateHR, async (req, res) => {
 });
 
 // API: Revoke Specific HR Invite (HR Only)
-router.put('/hr/invites/:id/revoke', authenticateHR, async (req, res) => {
+router.put('/hr/invites/:id/revoke', authenticateUser, authorize('MANAGE_INVITES'), async (req, res) => {
     try {
         await run("UPDATE hr_invites SET used = 1 WHERE id = ?", [req.params.id]);
         await logAudit('HR_INVITE_REVOKED', req.user.id, `Invite ${req.params.id} manually revoked`, req.ip);
@@ -208,7 +203,7 @@ router.put('/hr/invites/:id/revoke', authenticateHR, async (req, res) => {
 });
 
 // Create Mail (HR Only)
-router.post('/mails', authenticateHR, async (req, res) => {
+router.post('/mails', authenticateUser, authorize('SEND_GLOBAL_MAIL'), async (req, res) => {
     const { recipientId, subject, content, type, bonusAmount, meetingTime } = req.body;
 
     if (!subject || !content) return res.status(400).json({ error: 'Assunto e Conteúdo são obrigatórios.' });
@@ -297,7 +292,7 @@ router.get('/users/:id', authenticateUser, async (req, res) => {
 });
 
 // Update User Shift (HR Only)
-router.put('/users/:id/shift', authenticateHR, async (req, res) => {
+router.put('/users/:id/shift', authenticateUser, authorize('MANAGE_USERS'), async (req, res) => {
     const { shift_expectation } = req.body;
     try {
         await run("UPDATE users SET shift_expectation = ? WHERE id = ?", [shift_expectation, req.params.id]);
@@ -308,7 +303,7 @@ router.put('/users/:id/shift', authenticateHR, async (req, res) => {
 });
 
 // API: Kill-Switch (Revoke All Active Sessions for User)
-router.post('/users/:id/revoke-sessions', authenticateHR, async (req, res) => {
+router.post('/users/:id/revoke-sessions', authenticateUser, authorize('REVOKE_SESSION'), async (req, res) => {
     try {
         const now = new Date().toISOString();
         await run("UPDATE users SET session_valid_after = ? WHERE id = ?", [now, req.params.id]);
@@ -320,7 +315,7 @@ router.post('/users/:id/revoke-sessions', authenticateHR, async (req, res) => {
 });
 
 // API: Weekly HR Report
-router.get('/reports/weekly', authenticateHR, async (req, res) => {
+router.get('/reports/weekly', authenticateUser, authorize('VIEW_REPORTS'), async (req, res) => {
     try {
         const users = await all("SELECT id, name, shift_expectation FROM users");
 
@@ -393,6 +388,17 @@ router.get('/reports/weekly', authenticateHR, async (req, res) => {
     } catch (err) {
         console.error('Failed to generate weekly report', err);
         res.status(500).json({ error: 'Falha ao gerar relatório semanal' });
+    }
+});
+
+// API: Get Security Audit Logs (Infra & ITAnalyst)
+router.get('/security/logs', authenticateUser, authorize('VIEW_LOGS'), async (req, res) => {
+    try {
+        const logs = await all("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 500");
+        res.json(logs);
+    } catch (err) {
+        console.error('Failed to fetch security logs', err);
+        res.status(500).json({ error: 'Falha ao ler os logs de auditoria.' });
     }
 });
 

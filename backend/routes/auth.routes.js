@@ -42,9 +42,9 @@ router.post('/register', authLimiter, async (req, res) => {
         return res.status(400).json({ error: 'Campos obrigatórios ausentes (Nome, ID, Cargo, Senha, Email).' });
     }
 
-    if (['HR', 'HRAssistant'].includes(role)) {
+    if (['HR', 'HRAssistant', 'Infra', 'ITAnalyst'].includes(role)) {
         if (!specialCode) {
-            return res.status(403).json({ error: 'Código de convite obrigatório para registro de RH.' });
+            return res.status(403).json({ error: 'Código de convite obrigatório para registro de RH/TI.' });
         }
         // Verify Token
         const tokenHash = crypto.createHash('sha256').update(specialCode).digest('hex');
@@ -159,9 +159,20 @@ router.post('/login', authLimiter, async (req, res) => {
 
             await logAudit('LOGIN_SUCCESS', id, 'Successful login', req.ip);
 
-            // Reset Failed Attempts
-            if (user.failed_login_attempts > 0 || user.locked_until) {
-                await run("UPDATE users SET failed_login_attempts = 0, locked_until = NULL WHERE id = ?", [id]);
+            // IP/UA Anomaly Detection
+            const currentIP = req.ip;
+            const currentUA = req.get('user-agent') || 'Unknown';
+
+            if (user.last_login_ip && user.last_login_ip !== currentIP) {
+                await logAudit('ANOMALY_IP_CHANGE', id, `IP changed from ${user.last_login_ip} to ${currentIP}`, currentIP);
+            }
+            if (user.last_login_ua && user.last_login_ua !== currentUA) {
+                await logAudit('ANOMALY_UA_CHANGE', id, `User-Agent changed significantly`, currentIP);
+            }
+
+            // Reset Failed Attempts and update tracking metrics
+            if (user.failed_login_attempts > 0 || user.locked_until || user.last_login_ip !== currentIP || user.last_login_ua !== currentUA) {
+                await run("UPDATE users SET failed_login_attempts = 0, locked_until = NULL, last_login_ip = ?, last_login_ua = ? WHERE id = ?", [currentIP, currentUA, id]);
             }
 
             res.json({ success: true, token, refreshToken, userId: id, role: user.role });
@@ -207,7 +218,8 @@ router.post('/refresh', async (req, res) => {
         const user = await get("SELECT role, session_version, session_valid_after FROM users WHERE id = ?", [decoded.id]);
         if (!user) return res.status(401).json({ error: 'Usuário não existe mais.' });
 
-        if (decoded.sessionVersion && user.session_version !== decoded.sessionVersion) {
+        const expectedVersion = user.session_version || 1;
+        if (decoded.sessionVersion && expectedVersion !== decoded.sessionVersion) {
             return res.status(401).json({ error: 'Sessão expirou globalmente (Session Version mismatch).' });
         }
 

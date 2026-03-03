@@ -11,6 +11,7 @@ import Home from './Home';
 import Inbox from './Inbox';
 import ReceiptsOS from './ReceiptsOS';
 import InvoiceCalculator from './InvoiceCalculator';
+import SecurityDashboard from './SecurityDashboard';
 import './index.css';
 
 function PrivateRoute({ children }) {
@@ -43,6 +44,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/security" element={<PrivateRoute><SecurityDashboard /></PrivateRoute>} />
       </Routes>
     </BrowserRouter>
   );

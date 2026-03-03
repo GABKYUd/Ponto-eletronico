@@ -109,7 +109,9 @@ function initializeSchema() {
             failed_login_attempts INTEGER DEFAULT 0,
             locked_until TEXT,
             session_valid_after TEXT,
-            session_version INTEGER DEFAULT 1
+            session_version INTEGER DEFAULT 1,
+            last_login_ip TEXT,
+            last_login_ua TEXT
         )`,
         `CREATE TABLE IF NOT EXISTS punches (
             id ${idType},
@@ -213,6 +215,9 @@ function initializeSchema() {
                 db.run("ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0", () => { });
                 db.run("ALTER TABLE users ADD COLUMN locked_until TEXT", () => { });
                 db.run("ALTER TABLE users ADD COLUMN session_valid_after TEXT", () => { });
+                db.run("ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1", () => { });
+                db.run("ALTER TABLE users ADD COLUMN last_login_ip TEXT", () => { });
+                db.run("ALTER TABLE users ADD COLUMN last_login_ua TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN recipient_id TEXT", () => { });
                 db.run("ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'", () => { });
             } else {
@@ -226,6 +231,9 @@ function initializeSchema() {
                     "ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER DEFAULT 0",
                     "ALTER TABLE users ADD COLUMN locked_until TEXT",
                     "ALTER TABLE users ADD COLUMN session_valid_after TEXT",
+                    "ALTER TABLE users ADD COLUMN session_version INTEGER DEFAULT 1",
+                    "ALTER TABLE users ADD COLUMN last_login_ip TEXT",
+                    "ALTER TABLE users ADD COLUMN last_login_ua TEXT",
                     "ALTER TABLE messages ADD COLUMN recipient_id TEXT",
                     "ALTER TABLE messages ADD COLUMN type TEXT DEFAULT 'text'"
                 ];

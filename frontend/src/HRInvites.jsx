@@ -213,6 +213,8 @@ const HRInvites = ({ isHR }) => {
                                         <option value="Vendors">Vendas</option>
                                         <option value="Merchandising">Merchandising</option>
                                         <option value="HR">Administrador (HR)</option>
+                                        <option value="Infra">Infraestrutura (TI)</option>
+                                        <option value="ITAnalyst">Analista de TI</option>
                                     </select>
                                 </div>
                                 <div>

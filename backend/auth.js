@@ -48,7 +48,8 @@ const authenticateUser = async (req, res, next) => {
         if (!user) return res.status(401).json({ error: 'User no longer exists.' });
 
         // 2. Verify Session Version (Global Invalidation)
-        if (decoded.sessionVersion && user.session_version !== decoded.sessionVersion) {
+        const expectedVersion = user.session_version || 1;
+        if (decoded.sessionVersion && expectedVersion !== decoded.sessionVersion) {
             return res.status(401).json({ error: 'Session version mismatched. Please log in again.' });
         }
 
@@ -63,6 +64,7 @@ const authenticateUser = async (req, res, next) => {
         req.user = decoded;
         next();
     } catch (err) {
+        console.error("Auth Warning/Error:", err);
         await logAudit('TOKEN_VERIFY_FAILED', 'UNKNOWN', 'Invalid token verification attempt', req.ip);
         res.status(401).json({ error: 'Invalid token or signature.' });
     }

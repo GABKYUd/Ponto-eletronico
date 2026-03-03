@@ -33,13 +33,22 @@ Through an iterative development and security prioritization process, the applic
    - **Global Session Revocation (The "Kill-Switch"):** Implemented explicit JWT denylisting (`jti`) upon logout and global session invalidation capabilities for compromised accounts.
 
 ## Latest Additions
-- **Access Governance Dashboard (HR):** Visual management of ephemeral (24-hour) HR Invite tokens and instant session revocation tools to safeguard the platform.
-- **ReceiptsOS (Sales & Merchandising):** A robust PDF Receipt Builder with dynamic calculations (taxes, subtotals), time-tracking, and secure auto-saving functionality. History viewer is strictly restricted by HR hierarchy.
-- **Invoice Price Calculator (Sales):** A dedicated tool for the sales team to compute markups, taxes, and final selling prices.
-- **Advanced HR Hierarchy:** Introduced the `Assistente de RH` (HR Assistant) role with secure code validation, bridging the gap between employees and the HR Manager.
-- **Smart Auto-Breaks:** Non-intrusive WebSocket alerts that notify employees to take a break after 1 hour of continuous work, rather than forcefully manipulating database punching records.
-- **Architectural Refactoring:** Successfully modularized the backend architecture by decoupling file upload routes, WebSocket initialization, and background cron schedulers out of the main `server.js` loop.
-- **Unified Authentication Pipeline:** Streamlined the frontend's JWT resolution strategy across all components (Inbox, Chat, Profile) to natively support both HR Administrative tokens and ephemeral Employee session tokens.
+- **L3 Enterprise Security (Phase 7):**
+  - **Zero-Trust RBAC:** Complete overhaul separating strictly defined functions across HR, Infraestructura (TI), and Analista de TI roles.
+  - **Dynamic Session Control (The "Kill-Switch"):** Integrated `sessionVersion` validation directly against the active database, allowing leadership to instantly purge active sessions of compromised accounts globally.
+  - **Dual-Token Architecture:** Replaced long-lived sessions with 15-minute Access Tokens and secure, rotating 7-day Refresh Tokens.
+  - **Upload Hardening:** Migrated user avatar uploads away from disk to RAM buffers. Introduced Magic Byte detection and EXIF Stripping to prevent arbitrary shell executions, forcefully re-encoding images securely via `sharp`.
+  - **Structured Audit Logging:** Deployed a sophisticated JSON logging pipeline powered by `winston`, tagging every API request with an `x-request-id` to trace execution flows. Monitored via the dedicated visual `/security` dashboard.
+  - **Anomaly Detection:** Silent user profiling capturing shifts in IP addresses and User-Agents during login phases to flag stolen credentials.
+  - **DoS Mitigation:** Implemented aggressive rate-limiting protocols on WebSocket connections at the `socket.io` layer to prevent message flooding.
+
+- **Backend Modularization (Phase 6):**
+  - Refactored `server.js` from a monolithic entrypoint into a streamlined application bootstrap file.
+  - Extracted core services into isolated modules: `upload.routes.js`, `websockets.js`, and cron jobs inside `scripts/scheduler.js`.
+  - Frontend components were heavily split, abstracting logical units like `SecurityDashboard.jsx`, `HRMailModule.jsx`, and `WeeklyReportModal.jsx` away from the massive HR dashboard root.
+
+- **Advanced HR Hierarchy:** Introduced the *Assistente de RH* (HR Assistant) role with secure code validation, bridging the gap between employees and the HR Manager.
+- **Smart Auto-Breaks:** Non-intrusive WebSocket alerts that notify employees to take a break after continuous work frames, preserving the integrity of punch logs.
 
 ## How to Run Locally
 
@@ -50,12 +59,17 @@ Through an iterative development and security prioritization process, the applic
 ### Installation
 1. Install dependencies for both the backend and frontend:
    ```bash
-   cd backend && npm install
+   cd backend && npm install --legacy-peer-deps
    cd ../frontend && npm install
    ```
-2. Set up the `.env` configuration in the `backend` directory (e.g., `JWT_SECRET`, `CLOUDINARY_URL`).
-3. Start the application:
-   ```bash
-   cd backend && npm run build:frontend && npm start
-   ```
-4. Access the app via `http://localhost:3001` or run the Vite dev server for isolated frontend development (`npm run dev` inside `/frontend`).
+2. Set up the `.env` configuration in the `backend` directory (e.g., `JWT_SECRET`, `CLOUDINARY_URL`, `DATABASE_URL`).
+3. Start the application stack:
+   - Provide the backend (Development mode):
+     ```bash
+     cd backend && npm start
+     ```
+   - Provide the frontend (Vite Hot-Reload):
+     ```bash
+     cd frontend && npm run dev
+     ```
+4. Access the app via `http://localhost:5173`. Production builds should be served out of `http://localhost:3001` with `npm run build` prepended.

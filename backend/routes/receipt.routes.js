@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticateUser } = require('../auth');
+const { hasPermission } = require('../roles');
 const { run, all } = require('../database');
 
 const router = express.Router();
@@ -8,7 +9,7 @@ const router = express.Router();
 router.get('/', authenticateUser, async (req, res) => {
     try {
         let receipts;
-        if (req.user.role === 'HR') {
+        if (hasPermission(req.user.role, 'VIEW_ALL_RECEIPTS')) {
             receipts = await all("SELECT * FROM receipts ORDER BY timestamp DESC");
         } else {
             receipts = await all("SELECT * FROM receipts WHERE user_id = ? ORDER BY timestamp DESC", [req.user.id]);

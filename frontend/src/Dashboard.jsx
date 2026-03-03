@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import HRInvites from './HRInvites';
+import WeeklyReportModal from './WeeklyReportModal';
+import HRMailModule from './HRMailModule';
 import './index.css';
 
 function Dashboard() {
@@ -14,14 +16,6 @@ function Dashboard() {
     const [showWeeklyReport, setShowWeeklyReport] = useState(false);
     const [updatingShift, setUpdatingShift] = useState(false);
     const [showGovernance, setShowGovernance] = useState(false);
-
-    // Mails/Rewards State
-    const [mailSubject, setMailSubject] = useState('');
-    const [mailContent, setMailContent] = useState('');
-    const [mailType, setMailType] = useState('MAIL');
-    const [bonusAmount, setBonusAmount] = useState('');
-    const [meetingTime, setMeetingTime] = useState('');
-    const [mailStatus, setMailStatus] = useState(null);
 
     const navigate = useNavigate();
 
@@ -115,42 +109,7 @@ function Dashboard() {
         } catch (err) { console.error(err); }
     };
 
-    const handleSendMail = async (e) => {
-        e.preventDefault();
-        setMailStatus(null);
-        const token = localStorage.getItem('hrToken');
-        if (!token) return;
 
-        try {
-            const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/api/mails`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({
-                    recipientId: selectedEmp, // if null/empty, it sends to all
-                    subject: mailSubject,
-                    content: mailContent,
-                    type: mailType,
-                    bonusAmount: mailType === 'REWARD' ? Number(bonusAmount) : 0,
-                    meetingTime: mailType === 'MEETING' ? meetingTime : null
-                })
-            });
-            const data = await res.json();
-            if (res.ok) {
-                setMailStatus({ type: 'success', text: 'Enviado com sucesso!' });
-                setMailSubject('');
-                setMailContent('');
-                setBonusAmount('');
-                setMeetingTime('');
-            } else {
-                setMailStatus({ type: 'error', text: data.error || 'Falha ao enviar' });
-            }
-        } catch (err) {
-            setMailStatus({ type: 'error', text: 'Erro de conexão' });
-        }
-    };
 
     if (loading) return <div className="app-container"><div className="card">Carregando...</div></div>;
 
@@ -170,6 +129,7 @@ function Dashboard() {
                         <button onClick={loadWeeklyReport} className="btn" style={{ background: '#01bca7', color: '#000', fontSize: '0.9rem' }}>📅 Relatório Semanal</button>
                         <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#bb86fc', color: '#000', fontSize: '0.9rem' }}>👨‍💻 Painel do Funcionário</button>
                         <button onClick={() => { setShowGovernance(!showGovernance); setSelectedEmp(null); }} className="btn" style={{ background: showGovernance ? '#bb86fc' : '#333', color: showGovernance ? '#000' : '#fff', fontSize: '0.9rem', border: '1px solid #bb86fc' }}>🛡️ Governança</button>
+                        <button onClick={() => navigate('/security')} className="btn" style={{ background: '#b91c1c', color: '#fff', fontSize: '0.9rem', border: '1px solid #7f1d1d' }}>🚨 Segurança de T.I</button>
                         <button onClick={handleLogout} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>Sair</button>
                     </div>
                 </div>
@@ -354,94 +314,7 @@ function Dashboard() {
                             )}
 
                             {/* HR Mail & Rewards Module */}
-                            <div style={{ marginTop: '1.5rem', background: 'rgba(255,255,255,0.02)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #333' }}>
-                                <h4 style={{ margin: '0 0 1rem 0', color: '#fff', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span>✉️</span> Enviar Comunicação & Recompensas
-                                </h4>
-                                <form onSubmit={handleSendMail} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Destinatário</label>
-                                            <div style={{ padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff' }}>
-                                                {selectedEmp ? `${report[selectedEmp].name} (ID: ${selectedEmp})` : 'Todos os Funcionários (Geral)'}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Tipo</label>
-                                            <select
-                                                value={mailType}
-                                                onChange={e => setMailType(e.target.value)}
-                                                style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff' }}
-                                            >
-                                                <option value="MAIL">Email Padrão</option>
-                                                <option value="MEETING">Agendar Reunião</option>
-                                                <option value="REWARD">Enviar Recompensa/Bônus</option>
-                                            </select>
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Assunto</label>
-                                        <input
-                                            type="text"
-                                            value={mailSubject}
-                                            onChange={e => setMailSubject(e.target.value)}
-                                            placeholder="Assunto..."
-                                            style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff' }}
-                                            required
-                                        />
-                                    </div>
-
-                                    {mailType === 'REWARD' && (
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#fca311', fontSize: '0.9rem', fontWeight: 'bold' }}>Valor do Bônus (R$)</label>
-                                            <input
-                                                type="number"
-                                                value={bonusAmount}
-                                                onChange={e => setBonusAmount(e.target.value)}
-                                                placeholder="ex. 500"
-                                                style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #fca311', borderRadius: '8px', color: '#fff' }}
-                                                required
-                                            />
-                                        </div>
-                                    )}
-
-                                    {mailType === 'MEETING' && (
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.3rem', color: '#bb86fc', fontSize: '0.9rem', fontWeight: 'bold' }}>Data e Hora da Reunião</label>
-                                            <input
-                                                type="datetime-local"
-                                                value={meetingTime}
-                                                onChange={e => setMeetingTime(e.target.value)}
-                                                style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #bb86fc', borderRadius: '8px', color: '#fff' }}
-                                                required
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.3rem', color: '#aaa', fontSize: '0.9rem' }}>Conteúdo da Mensagem</label>
-                                        <textarea
-                                            value={mailContent}
-                                            onChange={e => setMailContent(e.target.value)}
-                                            placeholder="Escreva sua mensagem aqui..."
-                                            rows="4"
-                                            style={{ width: '100%', padding: '0.8rem', background: '#222', border: '1px solid #444', borderRadius: '8px', color: '#fff', resize: 'vertical' }}
-                                            required
-                                        ></textarea>
-                                    </div>
-
-                                    <button type="submit" className="btn" style={{ background: mailType === 'REWARD' ? '#fca311' : (mailType === 'MEETING' ? '#bb86fc' : '#03dac6'), color: '#000', fontWeight: 'bold', padding: '1rem' }}>
-                                        {mailType === 'REWARD' ? 'Enviar Recompensa 💰' : (mailType === 'MEETING' ? 'Agendar Reunião 📅' : 'Enviar Email ✉️')}
-                                    </button>
-
-                                    {mailStatus && (
-                                        <div style={{ marginTop: '0.5rem', padding: '0.8rem', borderRadius: '8px', background: mailStatus.type === 'success' ? 'rgba(3, 218, 198, 0.1)' : 'rgba(255, 68, 68, 0.1)', color: mailStatus.type === 'success' ? '#03dac6' : '#ff4444', border: `1px solid ${mailStatus.type === 'success' ? '#03dac6' : '#ff4444'}` }}>
-                                            {mailStatus.text}
-                                        </div>
-                                    )}
-                                </form>
-                            </div>
+                            <HRMailModule selectedEmp={selectedEmp} report={report} />
 
                         </div>
                     ) : (
@@ -461,42 +334,7 @@ function Dashboard() {
 
             {/* Weekly Report Modal */}
             {showWeeklyReport && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-                    <div className="card" style={{ background: '#1e1e1e', border: '1px solid #333', width: '90%', maxWidth: '900px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #333', paddingBottom: '1rem', marginBottom: '1rem' }}>
-                            <h2 style={{ margin: 0, color: '#03dac6' }}>Relatório Semanal de Turnos e Pausas</h2>
-                            <button onClick={() => setShowWeeklyReport(false)} className="btn" style={{ background: 'transparent', border: '1px solid #555' }}>Fechar</button>
-                        </div>
-                        {weeklyReport ? (
-                            <div style={{ overflowY: 'auto' }}>
-                                <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.95rem' }}>
-                                    <thead style={{ position: 'sticky', top: 0, background: '#1e1e1e' }}>
-                                        <tr style={{ borderBottom: '2px solid #333' }}>
-                                            <th style={{ padding: '0.8rem' }}>Funcionário</th>
-                                            <th style={{ padding: '0.8rem' }}>Horas Esp./Dia</th>
-                                            <th style={{ padding: '0.8rem' }}>Total Horas (7d)</th>
-                                            <th style={{ padding: '0.8rem' }}>Dias Abaixo do Esperado</th>
-                                            <th style={{ padding: '0.8rem' }}>Pausas Perdidas</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {weeklyReport.map(r => (
-                                            <tr key={r.id} style={{ borderBottom: '1px solid #222' }}>
-                                                <td style={{ padding: '0.8rem' }}>{r.name}</td>
-                                                <td style={{ padding: '0.8rem' }}>{r.shift_expectation}</td>
-                                                <td style={{ padding: '0.8rem' }}>{r.total_hours_worked}</td>
-                                                <td style={{ padding: '0.8rem', color: r.days_under_expected > 0 ? '#ff4444' : '#03dac6' }}>{r.days_under_expected}</td>
-                                                <td style={{ padding: '0.8rem', color: r.missed_breaks > 0 ? '#ffacac' : '#03dac6' }}>{r.missed_breaks}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        ) : (
-                            <div style={{ padding: '2rem', textAlign: 'center', color: '#888' }}>Carregando dados do relatório...</div>
-                        )}
-                    </div>
-                </div>
+                <WeeklyReportModal weeklyReport={weeklyReport} onClose={() => setShowWeeklyReport(false)} />
             )}
         </div>
     );

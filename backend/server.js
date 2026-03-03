@@ -4,6 +4,8 @@ const helmet = require('helmet');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const { v4: uuidv4 } = require('uuid');
+const logger = require('./logger');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +33,22 @@ app.use(helmet({
 
 app.use(cors());
 app.use(express.json());
+
+// Request Tracking and Logging Middleware
+app.use((req, res, next) => {
+    req.id = req.headers['x-request-id'] || uuidv4();
+    res.setHeader('x-request-id', req.id);
+
+    logger.info(`Incoming Request`, {
+        requestId: req.id,
+        method: req.method,
+        url: req.url,
+        ip: req.ip,
+        userAgent: req.get('user-agent')
+    });
+
+    next();
+});
 
 // Basic Rate Limiting
 const rateLimit = require('express-rate-limit');
