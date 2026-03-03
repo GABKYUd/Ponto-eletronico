@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area } from 'recharts';
 import HRInvites from './HRInvites';
 import WeeklyReportModal from './WeeklyReportModal';
 import HRMailModule from './HRMailModule';
+import { io } from 'socket.io-client';
 import './index.css';
 
 function Dashboard() {
@@ -16,6 +17,8 @@ function Dashboard() {
     const [showWeeklyReport, setShowWeeklyReport] = useState(false);
     const [updatingShift, setUpdatingShift] = useState(false);
     const [showGovernance, setShowGovernance] = useState(false);
+    const [livePresence, setLivePresence] = useState({}); // { employeeId: 'IN' | 'BREAK' | 'OUT' }
+    const userRole = localStorage.getItem('role') || '';
 
     const navigate = useNavigate();
 
@@ -56,8 +59,18 @@ function Dashboard() {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
 
-                if (response.status === 401 || response.status === 403) {
+                if (response.status === 401) {
                     localStorage.removeItem('hrToken');
+                    navigate('/login');
+                    return;
+                }
+
+                if (response.status === 403 && (userRole === 'ITAnalyst' || userRole === 'Infra')) {
+                    // IT Roles don't have VIEW_REPORTS permission, but they are allowed here.
+                    setReport({});
+                    setLoading(false);
+                    return;
+                } else if (response.status === 403) {
                     navigate('/login');
                     return;
                 }
@@ -69,13 +82,51 @@ function Dashboard() {
         };
 
         fetchReport();
+
+        // WebSocket Connection for Live Tracking
+        const token = localStorage.getItem('hrToken') || localStorage.getItem('token');
+        const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001', {
+            auth: { token }
+        });
+
+        socket.on('global_punch_update', (data) => {
+            setLivePresence(prev => ({
+                ...prev,
+                [data.userId]: data.type
+            }));
+        });
+
+        return () => socket.disconnect();
     }, [navigate]);
 
     const filteredEmployees = report ? Object.keys(report).filter(empId => {
         const emp = report[empId];
+        if (!emp) return false;
         const search = searchTerm.toLowerCase();
-        return empId.toLowerCase().includes(search) || (emp.name && emp.name.toLowerCase().includes(search));
+        return String(empId).toLowerCase().includes(search) || (emp?.name && String(emp.name).toLowerCase().includes(search));
     }) : [];
+
+    // --- Computed Global Metrics ---
+    const globalMetrics = {
+        totalEmployees: report ? Object.keys(report).length : 0,
+        totalShifts: 0,
+        totalAnomalies: 0,
+        dailyAnomaliesList: []
+    };
+
+    if (report) {
+        Object.entries(report).forEach(([empId, emp]) => {
+            if (emp.totalShifts) globalMetrics.totalShifts += emp.totalShifts;
+            if (emp.anomalies) {
+                globalMetrics.totalAnomalies += emp.anomalies.length;
+                emp.anomalies.forEach(a => {
+                    globalMetrics.dailyAnomaliesList.push({ ...a, empName: emp.name, empId: empId });
+                });
+            }
+        });
+        // Sort anomalies by most recent
+        globalMetrics.dailyAnomaliesList.sort((a, b) => new Date(b.time) - new Date(a.time));
+    }
 
     const handleUpdateShift = async (empId, newShift) => {
         setUpdatingShift(true);
@@ -125,11 +176,21 @@ function Dashboard() {
                     </div>
 
                     <div style={{ display: 'flex', gap: '0.8rem' }}>
-                        <button onClick={() => navigate('/receipts')} className="btn" style={{ background: '#e0e0e0', color: '#000', fontSize: '0.9rem' }}>🧾 Recibos</button>
-                        <button onClick={loadWeeklyReport} className="btn" style={{ background: '#01bca7', color: '#000', fontSize: '0.9rem' }}>📅 Relatório Semanal</button>
+                        {(userRole === 'HR' || userRole === 'HRAssistant' || userRole === 'MasterAdmin') && (
+                            <>
+                                <button onClick={() => navigate('/receipts')} className="btn" style={{ background: '#e0e0e0', color: '#000', fontSize: '0.9rem' }}>🧾 Recibos</button>
+                                <button onClick={loadWeeklyReport} className="btn" style={{ background: '#01bca7', color: '#000', fontSize: '0.9rem' }}>📅 Relatório Semanal</button>
+                            </>
+                        )}
                         <button onClick={() => navigate('/employee-hub')} className="btn" style={{ background: '#bb86fc', color: '#000', fontSize: '0.9rem' }}>👨‍💻 Painel do Funcionário</button>
-                        <button onClick={() => { setShowGovernance(!showGovernance); setSelectedEmp(null); }} className="btn" style={{ background: showGovernance ? '#bb86fc' : '#333', color: showGovernance ? '#000' : '#fff', fontSize: '0.9rem', border: '1px solid #bb86fc' }}>🛡️ Governança</button>
-                        <button onClick={() => navigate('/security')} className="btn" style={{ background: '#b91c1c', color: '#fff', fontSize: '0.9rem', border: '1px solid #7f1d1d' }}>🚨 Segurança de T.I</button>
+
+                        {(userRole === 'HR' || userRole === 'MasterAdmin') && (
+                            <button onClick={() => { setShowGovernance(!showGovernance); setSelectedEmp(null); }} className="btn" style={{ background: showGovernance ? '#bb86fc' : '#333', color: showGovernance ? '#000' : '#fff', fontSize: '0.9rem', border: '1px solid #bb86fc' }}>🛡️ Governança</button>
+                        )}
+
+                        {(userRole === 'ITAnalyst' || userRole === 'Infra' || userRole === 'MasterAdmin' || userRole === 'HR') && (
+                            <button onClick={() => navigate('/security')} className="btn" style={{ background: '#b91c1c', color: '#fff', fontSize: '0.9rem', border: '1px solid #7f1d1d' }}>🚨 Segurança de T.I</button>
+                        )}
                         <button onClick={handleLogout} className="btn" style={{ background: '#333', fontSize: '0.9rem' }}>Sair</button>
                     </div>
                 </div>
@@ -158,6 +219,12 @@ function Dashboard() {
                         {filteredEmployees.map(empId => {
                             const empData = report[empId];
                             const hasAnomalies = empData.anomalies.length > 0;
+                            const currentPresence = livePresence[empId];
+
+                            let presenceColor = 'transparent';
+                            if (currentPresence === 'IN' || currentPresence === 'BREAK_END') presenceColor = '#00C851';
+                            else if (currentPresence === 'BREAK_START') presenceColor = '#fca311';
+
                             return (
                                 <div
                                     key={empId}
@@ -168,12 +235,23 @@ function Dashboard() {
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         background: selectedEmp === empId ? '#333' : '#222',
-                                        borderLeft: hasAnomalies ? '4px solid #ff4444' : '4px solid #00C851',
-                                        transition: 'all 0.2s'
+                                        borderLeft: hasAnomalies ? '4px solid #ff4444' : '4px solid #333',
+                                        transition: 'all 0.2s',
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
                                     }}
                                 >
-                                    <div style={{ fontWeight: 'bold', fontSize: '1rem' }}>{empData.name}</div>
-                                    <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>ID: {empId}</div>
+                                    <div>
+                                        <div style={{ fontWeight: 'bold', fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            {empData.name}
+                                            {presenceColor !== 'transparent' && (
+                                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: presenceColor, display: 'inline-block', boxShadow: `0 0 5px ${presenceColor}` }}></span>
+                                            )}
+                                        </div>
+                                        <div style={{ fontSize: '0.8rem', color: '#888', marginTop: '4px' }}>ID: {empId}</div>
+                                    </div>
+                                    {hasAnomalies && <span style={{ fontSize: '0.9rem' }}>⚠️</span>}
                                 </div>
                             );
                         })}
@@ -319,12 +397,74 @@ function Dashboard() {
                         </div>
                     ) : (
                         !showGovernance && (
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#666' }}>
-                                <div style={{ width: '150px', height: '150px', borderRadius: '50%', background: 'rgba(255,255,255,0.02)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '2rem' }}>
-                                    <span style={{ fontSize: '4rem', opacity: 0.5 }}>📊</span>
+                            <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                <div style={{ borderBottom: '1px solid #333', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                                    <h2 style={{ margin: 0, fontSize: '2.2rem', background: 'linear-gradient(to right, #00C851, #03dac6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                                        Visão Global da Empresa
+                                    </h2>
+                                    <p style={{ color: '#888', margin: '0.5rem 0 0' }}>Monitoramento de Produtividade Central e Resolução de Anomalias</p>
                                 </div>
-                                <h2 style={{ color: '#aaa', margin: '0 0 0.5rem 0' }}>Nenhum Funcionário Selecionado</h2>
-                                <p>Selecione um membro da equipe no diretório para gerar seu painel de análise.</p>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+                                    <div style={{ background: 'linear-gradient(135deg, rgba(3, 218, 198, 0.1), transparent)', border: '1px solid rgba(3,218,198,0.2)', padding: '1.5rem', borderRadius: '12px' }}>
+                                        <p style={{ margin: '0 0 0.5rem 0', color: '#03dac6', fontSize: '0.9rem' }}>Total de Colaboradores</p>
+                                        <h3 style={{ margin: 0, fontSize: '2.5rem' }}>{globalMetrics.totalEmployees}</h3>
+                                    </div>
+                                    <div style={{ background: 'linear-gradient(135deg, rgba(187, 134, 252, 0.1), transparent)', border: '1px solid rgba(187,134,252,0.2)', padding: '1.5rem', borderRadius: '12px' }}>
+                                        <p style={{ margin: '0 0 0.5rem 0', color: '#bb86fc', fontSize: '0.9rem' }}>Total de Turnos Concluídos (Semana)</p>
+                                        <h3 style={{ margin: 0, fontSize: '2.5rem' }}>{globalMetrics.totalShifts}</h3>
+                                    </div>
+                                    <div style={{ background: 'linear-gradient(135deg, rgba(255, 68, 68, 0.1), transparent)', border: '1px solid rgba(255,68,68,0.2)', padding: '1.5rem', borderRadius: '12px' }}>
+                                        <p style={{ margin: '0 0 0.5rem 0', color: '#ff4444', fontSize: '0.9rem' }}>Anomalias Pendentes em Toda Empresa</p>
+                                        <h3 style={{ margin: 0, fontSize: '2.5rem' }}>{globalMetrics.totalAnomalies}</h3>
+                                    </div>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem', flex: 1, minHeight: '300px' }}>
+                                    <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid #222', borderRadius: '12px', padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                        <h4 style={{ margin: '0 0 1rem 0', color: '#ddd', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <span style={{ color: '#ff4444' }}>🔴</span> Fila de Alertas Globais (Ação Requerida)
+                                        </h4>
+                                        <div style={{ flex: 1, overflowY: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                                                <thead>
+                                                    <tr style={{ borderBottom: '1px solid #333', textAlign: 'left' }}>
+                                                        <th style={{ padding: '0.8rem', color: '#888', position: 'sticky', top: 0, background: '#1a1a1a' }}>Colaborador</th>
+                                                        <th style={{ padding: '0.8rem', color: '#888', position: 'sticky', top: 0, background: '#1a1a1a' }}>Data/Hora</th>
+                                                        <th style={{ padding: '0.8rem', color: '#888', position: 'sticky', top: 0, background: '#1a1a1a' }}>Tipo de Infração</th>
+                                                        <th style={{ padding: '0.8rem', color: '#888', position: 'sticky', top: 0, background: '#1a1a1a' }}>Detalhes</th>
+                                                        <th style={{ padding: '0.8rem', color: '#888', position: 'sticky', top: 0, background: '#1a1a1a' }}>Ação</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {globalMetrics.dailyAnomaliesList.map((a, idx) => (
+                                                        <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)' }}>
+                                                            <td style={{ padding: '1rem 0.8rem', fontWeight: 'bold', color: '#ccc' }}>{a.empName}</td>
+                                                            <td style={{ padding: '1rem 0.8rem', color: '#888' }}>{new Date(a.time).toLocaleString()}</td>
+                                                            <td style={{ padding: '1rem 0.8rem', color: '#ffacac' }}>{a.type}</td>
+                                                            <td style={{ padding: '1rem 0.8rem', color: '#aaa' }}>{a.detail}</td>
+                                                            <td style={{ padding: '1rem 0.8rem' }}>
+                                                                <button
+                                                                    onClick={() => setSelectedEmp(a.empId)}
+                                                                    className="btn-small"
+                                                                    style={{ background: '#333', color: '#03dac6', border: '1px solid #03dac6' }}>
+                                                                    Analisar
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {globalMetrics.dailyAnomaliesList.length === 0 && (
+                                                        <tr>
+                                                            <td colSpan="5" style={{ padding: '3rem', textAlign: 'center', color: '#00C851', fontSize: '1.1rem' }}>
+                                                                Tudo Perfeito! A empresa não tem nenhuma anomalia de turno pendente. 🎉
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         )
                     )}

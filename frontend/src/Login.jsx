@@ -40,8 +40,10 @@ function Login() {
                 localStorage.setItem('role', data.role);
                 localStorage.setItem('name', formData.id); // Placeholder Name
 
-                if (data.role === 'HR') {
+                if (data.role === 'HR' || data.role === 'HRAssistant') {
                     navigate('/dashboard');
+                } else if (data.role === 'ITAnalyst' || data.role === 'Infra') {
+                    navigate('/security');
                 } else {
                     navigate('/employee-hub');
                 }

@@ -24,6 +24,17 @@ router.post('/', authenticateUser, async (req, res) => {
     try {
         await run("INSERT INTO punches (user_id, timestamp, type) VALUES (?, ?, ?)", [employeeId, timestamp, type]);
         console.log(`Recorded: ${employeeId} - ${type} at ${timestamp}`);
+
+        // Broadcast the event via WebSocket to HR Dashboards for Live Tracking
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('global_punch_update', {
+                userId: employeeId,
+                type: type,
+                timestamp: timestamp
+            });
+        }
+
         res.json({ success: true, message: `Marcação de ${type} registrada com sucesso para ${user.name}.`, timestamp });
     } catch (err) {
         console.error('Error writing to DB:', err);

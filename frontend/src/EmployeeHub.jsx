@@ -298,8 +298,12 @@ function EmployeeHub() {
                             </button>
                         </div>
 
-                        {['HR', 'HRAssistant'].includes(user?.role) && (
+                        {['HR', 'HRAssistant', 'MasterAdmin'].includes(user?.role) && (
                             <button className="btn" onClick={() => navigate('/dashboard')} style={{ background: '#ff4444', color: '#fff', border: '1px solid #772222' }}>🏢 Acessar Centro de Comando RH</button>
+                        )}
+
+                        {['Infra', 'ITAnalyst', 'MasterAdmin'].includes(user?.role) && (
+                            <button className="btn" onClick={() => navigate('/security')} style={{ background: '#b91c1c', color: '#fff', border: '1px solid #7f1d1d' }}>🚨 Acessar Centro de Comando T.I</button>
                         )}
 
                         <div style={{ borderTop: '1px solid #333', margin: '1rem 0' }}></div>
